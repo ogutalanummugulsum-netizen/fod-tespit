@@ -1,0 +1,11 @@
+# Nesne tespiti (YOLO)
+ultralytics>=8.3
+
+# Veri hazırlama ve raporlama
+numpy
+pandas
+matplotlib
+pillow
+
+# Benzer görüntüleri bulmak için (train/val/test sızıntı kontrolü)
+imagehash
