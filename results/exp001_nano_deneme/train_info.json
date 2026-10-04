@@ -1,0 +1,16 @@
+{
+  "name": "exp001_nano_deneme",
+  "model": "yolo11n.pt",
+  "epochs": 3,
+  "imgsz": 320,
+  "batch": 64,
+  "seed": 0,
+  "resumed": false,
+  "run_dir": "/content/drive/MyDrive/fod_proje/runs/exp001_nano_deneme",
+  "best_weights": "/content/drive/MyDrive/fod_proje/runs/exp001_nano_deneme/weights/best.pt",
+  "date": "2026-10-04 13:43",
+  "git_commit": "e948f4c",
+  "ultralytics": "8.4.172",
+  "torch": "2.11.0+cu130",
+  "device": "Tesla T4"
+}

@@ -1,0 +1,19 @@
+{
+  "exp_id": "exp001_nano_deneme",
+  "split": "val",
+  "weights": "/content/drive/MyDrive/fod_proje/runs/exp001_nano_deneme/weights/best.pt",
+  "imgsz": 320,
+  "conf_threshold": 0.6026026026026026,
+  "date": "2026-10-04 13:44",
+  "git_commit": "e948f4c",
+  "light_weights": {
+    "Dry-Bright": 0.5013464326931613,
+    "Wet-Dim": 0.2135353475571864,
+    "Dry-Dim": 0.15529843458704465,
+    "Dry-Dark": 0.12981978516260764
+  },
+  "mAP50": 0.9775,
+  "mAP50_95": 0.7954,
+  "precision": 0.9347,
+  "recall": 0.9843
+}

@@ -1,1 +1,2 @@
 exp_id,date,model,imgsz,epochs,split,mAP50,mAP50_95,precision,recall,notes
+exp001_nano_deneme,2026-10-04,yolo11n.pt,320,3,val,0.9775,0.7954,0.9347,0.9843,kisa deneme
