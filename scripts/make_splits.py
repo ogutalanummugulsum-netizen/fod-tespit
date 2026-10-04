@@ -9,18 +9,23 @@ Video parçası kuralı: görüntüler numara sırasıyla gezilir. Sınıf deği
 hava/ışık değişirse yeni parça başlar. Kutunun yer değiştirmesi (sıçrama) parça
 sınırı sayılmaz. FOD-A VOC 2.1 verisinde bu kural 116 parça üretir.
 
-Bölme kuralları:
-    - Bir parça asla ikiye bölünmez.
-    - Val ve test, toplam karelerin yaklaşık %10'u olur (%9 - %11 arası kabul edilir).
-    - Tek bir parça, val ya da test'in yarısından fazlasını oluşturamaz.
-    - Test'te (sonra val'de) olabildiğince çok farklı sınıf bulunur.
-    - Seed sabittir: aynı komut her zaman aynı bölmeyi üretir.
+Bölme kuralları (hepsi aynı anda sağlanmalı):
+    1. Bir parça asla ikiye bölünmez.
+    2. Val ve test, toplam karelerin %9 - %11'i olur.
+    3. Tek bir parça, val ya da test'in yarısından fazlasını oluşturamaz.
+    4. Test'te Bolt, Nut ve Rock'tan en az birer parça bulunur.
+    5. Val'de en az 12 parça bulunur ve tek bir sınıf val karelerinin %25'ini geçemez.
+    6. 32 pikselden küçük kutuların oranı val ve test'te train'e yakındır (en fazla 5 puan fark).
+    7. Test'te, eğitimde hiç görülmeyen 2 - 4 sınıf bulunur.
+Kurallara uyan bölmeler içinden, test'te en çok farklı sınıf olan seçilir
+(eşitlikte: val'de daha çok parça, sonra val'de daha çok sınıf, sonra %10'a yakınlık).
+Seed sabittir: aynı komut her zaman aynı bölmeyi üretir.
 
 Ürettiği dosyalar:
     configs/splits.csv              -> hangi parça hangi bölümde (GitHub'da saklanır)
     data/yolo/image_splits.csv      -> hangi görüntü hangi parçada ve bölümde
     data/yolo/images/{train,val,test}/ ve data/yolo/labels/{train,val,test}/
-    results/split_report.txt        -> bölme raporu (sınıf sınıf kare sayıları)
+    results/split_report.txt        -> bölme raporu (kural kontrolü, sınıf sınıf kare sayıları)
 """
 
 import argparse
@@ -33,16 +38,30 @@ from pathlib import Path
 SPLITS = ["train", "val", "test"]
 SPLITS_HEADER = ["segment_id", "first_image", "last_image", "n_images", "classes", "weather", "light", "split"]
 
+# Bölme kuralları
+TOLERANCE = 0.10                    # val/test hedef oranından en fazla %10 sapabilir (%9 - %11)
+MAX_SEGMENT_SHARE = 0.5             # tek parça, val ya da test'in en fazla yarısı
+TEST_REQUIRED_CLASSES = ["Bolt", "Nut", "Rock"]
+VAL_MIN_SEGMENTS = 12
+VAL_MAX_CLASS_SHARE = 0.25
+SMALL_BOX_PX = 32                   # uzun kenarı bundan kısa olan kutu "küçük" sayılır
+SMALL_BOX_MAX_DIFF = 5.0            # küçük kutu oranında train ile en fazla fark (yüzde puanı)
+TEST_UNSEEN_CLASSES = (2, 4)        # test'te olup eğitimde hiç olmayan sınıf sayısı (en az, en çok)
+
 
 def read_images(boxes_csv):
-    """boxes.csv dosyasından her görüntünün sınıflarını, hava ve ışık bilgisini okur."""
+    """boxes.csv dosyasından her görüntünün sınıflarını, hava/ışık bilgisini ve kutu sayılarını okur."""
     images = {}
     with open(boxes_csv, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            info = images.setdefault(
-                row["image_id"], {"classes": set(), "weather": row["weather"], "light": row["light"]}
-            )
+            info = images.setdefault(row["image_id"], {
+                "classes": set(), "weather": row["weather"], "light": row["light"], "n_boxes": 0, "n_small": 0,
+            })
             info["classes"].add(row["class_name"])
+            long_side = max(float(row["xmax"]) - float(row["xmin"]), float(row["ymax"]) - float(row["ymin"]))
+            info["n_boxes"] += 1
+            if long_side < SMALL_BOX_PX:
+                info["n_small"] += 1
     # Görüntü numaraları video sırasını izler, o yüzden numaraya göre sıralıyoruz
     return dict(sorted(images.items()))
 
@@ -62,27 +81,50 @@ def find_segments(images):
                 "segment_id": f"seg_{len(segments):03d}",
                 "image_ids": [],
                 "classes": set(),
+                "class_frames": Counter(),  # sınıf -> o sınıfı içeren kare sayısı
+                "n_boxes": 0,
+                "n_small": 0,
                 "weather": info["weather"],
                 "light": info["light"],
             })
-        segments[-1]["image_ids"].append(image_id)
-        segments[-1]["classes"] |= info["classes"]
+        seg = segments[-1]
+        seg["image_ids"].append(image_id)
+        seg["classes"] |= info["classes"]
+        seg["class_frames"].update(info["classes"])
+        seg["n_boxes"] += info["n_boxes"]
+        seg["n_small"] += info["n_small"]
         prev = info
     for seg in segments:
         seg["n_images"] = len(seg["image_ids"])
     return segments
 
 
-def pick_segments(available, segments, rng, target, tolerance, max_share):
-    """Bir bölüm (val ya da test) için rastgele bir parça seçimi dener.
+def split_stats(indices, segments):
+    """Bir bölümün özet sayıları."""
+    class_frames = Counter()
+    for i in indices:
+        class_frames.update(segments[i]["class_frames"])
+    n_boxes = sum(segments[i]["n_boxes"] for i in indices)
+    return {
+        "n_images": sum(segments[i]["n_images"] for i in indices),
+        "n_segments": len(indices),
+        "biggest": max(segments[i]["n_images"] for i in indices),
+        "class_frames": class_frames,
+        "small_share": 100 * sum(segments[i]["n_small"] for i in indices) / n_boxes,
+    }
+
+
+def fill(chosen, order, segments, target, class_cap=None):
+    """Bir bölümü hedef kare sayısına kadar doldurur.
 
     Önce bölüme yeni sınıf getiren parçaları, sonra kalanları ekler.
-    Kurallar sağlanmazsa None döner.
+    class_cap verilirse hiçbir sınıfın kare sayısı bu sınırı geçemez.
     """
-    order = sorted(available, key=lambda i: rng.random())  # rastgele sıra
-    chosen = []
-    total = 0
-    classes = set()
+    total = sum(segments[i]["n_images"] for i in chosen)
+    class_frames = Counter()
+    for i in chosen:
+        class_frames.update(segments[i]["class_frames"])
+
     for must_add_class in (True, False):
         for i in order:
             if total >= target:
@@ -90,65 +132,133 @@ def pick_segments(available, segments, rng, target, tolerance, max_share):
             seg = segments[i]
             if i in chosen:
                 continue
-            if must_add_class and seg["classes"] <= classes:
+            if must_add_class and all(name in class_frames for name in seg["classes"]):
                 continue
-            if total + seg["n_images"] > target * (1 + tolerance):
+            if total + seg["n_images"] > target * (1 + TOLERANCE):
+                continue
+            if class_cap is not None and any(
+                class_frames[name] + n > class_cap for name, n in seg["class_frames"].items()
+            ):
                 continue
             chosen.append(i)
             total += seg["n_images"]
-            classes |= seg["classes"]
-
-    if total < target * (1 - tolerance):
-        return None
-    if max(segments[i]["n_images"] for i in chosen) > max_share * total:
-        return None
+            class_frames.update(seg["class_frames"])
     return chosen
 
 
-def split_stats(indices, segments):
-    total = sum(segments[i]["n_images"] for i in indices)
-    classes = set()
-    for i in indices:
-        classes |= segments[i]["classes"]
-    return total, classes
+def draw_candidate(segments, rng, test_target, val_target):
+    """Rastgele bir bölme adayı üretir: (test parçaları, val parçaları)."""
+    all_indices = list(range(len(segments)))
+
+    # Test: önce zorunlu sınıflardan (Bolt, Nut, Rock) birer rastgele parça
+    test = []
+    for name in TEST_REQUIRED_CLASSES:
+        options = [i for i in all_indices if name in segments[i]["classes"] and i not in test]
+        test.append(options[int(rng.random() * len(options))])
+    order = sorted(all_indices, key=lambda i: rng.random())  # rastgele sıra
+    fill(test, order, segments, test_target)
+
+    # Val: kalan parçalardan. Sınıf sınırı, val en küçük boyutunda kalsa bile %25 kuralını sağlar.
+    rest = [i for i in all_indices if i not in test]
+    order = sorted(rest, key=lambda i: rng.random())
+    class_cap = VAL_MAX_CLASS_SHARE * val_target * (1 - TOLERANCE)
+    val = fill([], order, segments, val_target, class_cap)
+    return test, val
 
 
-def assign_splits(segments, seed, val_ratio, test_ratio, tries, tolerance=0.10, max_share=0.5):
-    """Birçok rastgele bölme dener, kurallara uyanlar içinden en iyisini seçer."""
+def check_rules(test, val, segments, test_target, val_target):
+    """Bölme kurallarını kontrol eder. [(kural, tutuyor mu, açıklama), ...] ve istatistikleri döner."""
+    train = [i for i in range(len(segments)) if i not in test and i not in val]
+    stats = {"train": split_stats(train, segments), "test": split_stats(test, segments)}
+    if not val:
+        return [("Val boş", False, "val'e hiç parça seçilemedi")], stats
+    stats["val"] = split_stats(val, segments)
+
+    rules = []
+    for name, target in (("val", val_target), ("test", test_target)):
+        s = stats[name]
+        rules.append((
+            f"{name} boyutu hedefin %{100 * TOLERANCE:.0f} yakınında",
+            target * (1 - TOLERANCE) <= s["n_images"] <= target * (1 + TOLERANCE),
+            f"{s['n_images']} kare (hedef {target:.0f})",
+        ))
+        rules.append((
+            f"{name}: tek parça yarıyı geçmiyor",
+            s["biggest"] <= MAX_SEGMENT_SHARE * s["n_images"],
+            f"en büyük parça %{100 * s['biggest'] / s['n_images']:.1f}",
+        ))
+
+    for name in TEST_REQUIRED_CLASSES:
+        n = stats["test"]["class_frames"][name]
+        rules.append((f"test'te {name} var", n > 0, f"{n} kare"))
+
+    v = stats["val"]
+    rules.append((f"val'de en az {VAL_MIN_SEGMENTS} parça", v["n_segments"] >= VAL_MIN_SEGMENTS, f"{v['n_segments']} parça"))
+    top_class, top_frames = v["class_frames"].most_common(1)[0]
+    rules.append((
+        f"val'de tek sınıf en fazla %{100 * VAL_MAX_CLASS_SHARE:.0f}",
+        top_frames <= VAL_MAX_CLASS_SHARE * v["n_images"],
+        f"en büyük sınıf {top_class} %{100 * top_frames / v['n_images']:.1f}",
+    ))
+
+    train_small = stats["train"]["small_share"]
+    for name in ("val", "test"):
+        diff = stats[name]["small_share"] - train_small
+        rules.append((
+            f"{name}: küçük kutu oranı train'e yakın (en fazla {SMALL_BOX_MAX_DIFF:.0f} puan)",
+            abs(diff) <= SMALL_BOX_MAX_DIFF,
+            f"{name} %{stats[name]['small_share']:.1f}, train %{train_small:.1f}, fark {diff:+.1f} puan",
+        ))
+
+    unseen = sorted(c for c in stats["test"]["class_frames"] if c not in stats["train"]["class_frames"])
+    stats["test_unseen"] = unseen
+    low, high = TEST_UNSEEN_CLASSES
+    rules.append((
+        f"test'te eğitimde olmayan {low}-{high} sınıf",
+        low <= len(unseen) <= high,
+        f"{len(unseen)} sınıf: {', '.join(unseen) or '-'}",
+    ))
+    return rules, stats
+
+
+def assign_splits(segments, seed, val_ratio, test_ratio, tries):
+    """Birçok rastgele bölme dener, bütün kurallara uyanlar içinden en iyisini seçer."""
     rng = random.Random(seed)
     n_total = sum(seg["n_images"] for seg in segments)
     test_target = n_total * test_ratio
     val_target = n_total * val_ratio
-    all_indices = list(range(len(segments)))
 
     best = None
+    n_ok = 0
+    failures = Counter()  # hangi kural kaç adayda tutmadı
     for _ in range(tries):
-        test = pick_segments(all_indices, segments, rng, test_target, tolerance, max_share)
-        if test is None:
+        test, val = draw_candidate(segments, rng, test_target, val_target)
+        rules, stats = check_rules(test, val, segments, test_target, val_target)
+        failed = [rule for rule, ok, _ in rules if not ok]
+        if failed:
+            failures.update(failed)
             continue
-        rest = [i for i in all_indices if i not in test]
-        val = pick_segments(rest, segments, rng, val_target, tolerance, max_share)
-        if val is None:
-            continue
-        test_total, test_classes = split_stats(test, segments)
-        val_total, val_classes = split_stats(val, segments)
-        # Önce test'teki sınıf sayısı, sonra val'deki sınıf sayısı, sonra hedef orana yakınlık
+        n_ok += 1
         score = (
-            len(test_classes),
-            len(val_classes),
-            -(abs(test_total - test_target) + abs(val_total - val_target)),
+            len(stats["test"]["class_frames"]),
+            stats["val"]["n_segments"],
+            len(stats["val"]["class_frames"]),
+            -(abs(stats["test"]["n_images"] - test_target) + abs(stats["val"]["n_images"] - val_target)),
         )
         if best is None or score > best[0]:
-            best = (score, test, val)
+            best = (score, test, val, rules)
 
     if best is None:
-        raise SystemExit("Kurallara uyan bir bölme bulunamadı. --tries değerini artırmayı dene.")
+        # Zorla uydurmuyoruz: hangi kuralın ne sıklıkta tutmadığını göster ve dur
+        lines = [f"{tries} denemede bütün kurallara uyan bir bölme bulunamadı.", "Tutmayan kurallar (kaç adayda):"]
+        lines += [f"  {count:>6}  {rule}" for rule, count in failures.most_common()]
+        raise SystemExit("\n".join(lines))
 
-    _, test, val = best
+    _, test, val, rules = best
     assignment = {}
     for i, seg in enumerate(segments):
         assignment[seg["segment_id"]] = "test" if i in test else "val" if i in val else "train"
-    return assignment
+    return assignment, rules, n_ok
 
 
 def splits_rows(segments, assignment):
@@ -204,30 +314,34 @@ def build_folders(segments, assignment, voc_dir, data_dir, label_set):
                 writer.writerow([image_id, seg["segment_id"], split])
 
 
-def make_report(segments, assignment, images, seed):
+def make_report(segments, assignment, rules, seed, tries, n_ok):
     """Bölme raporunu metin olarak hazırlar."""
     n_total = sum(seg["n_images"] for seg in segments)
-    lines = [f"Seed: {seed}", f"Video parçası sayısı: {len(segments)}", f"Toplam kare: {n_total}", ""]
+    lines = [
+        f"Seed: {seed}",
+        f"Video parçası sayısı: {len(segments)}",
+        f"Toplam kare: {n_total}",
+        f"Denenen bölme: {tries}, bütün kurallara uyan: {n_ok}",
+        "",
+    ]
 
-    lines.append(f"{'bölüm':<7}{'kare':>8}{'oran':>8}{'parça':>7}{'sınıf':>7}{'en büyük parçanın payı':>26}")
+    by_split = {split: [i for i, seg in enumerate(segments) if assignment[seg["segment_id"]] == split] for split in SPLITS}
+    stats = {split: split_stats(by_split[split], segments) for split in SPLITS}
+
+    lines.append(f"{'bölüm':<7}{'kare':>8}{'oran':>8}{'parça':>7}{'sınıf':>7}{'en büyük parça':>16}{'küçük kutu':>12}")
     for split in SPLITS:
-        segs = [seg for seg in segments if assignment[seg["segment_id"]] == split]
-        total = sum(seg["n_images"] for seg in segs)
-        classes = set()
-        for seg in segs:
-            classes |= seg["classes"]
-        biggest = max(seg["n_images"] for seg in segs)
+        s = stats[split]
         lines.append(
-            f"{split:<7}{total:>8}{100 * total / n_total:>7.1f}%{len(segs):>7}{len(classes):>7}{100 * biggest / total:>25.1f}%"
+            f"{split:<7}{s['n_images']:>8}{100 * s['n_images'] / n_total:>7.1f}%{s['n_segments']:>7}"
+            f"{len(s['class_frames']):>7}{100 * s['biggest'] / s['n_images']:>15.1f}%{s['small_share']:>11.1f}%"
         )
+    lines.append(f"(küçük kutu: uzun kenarı {SMALL_BOX_PX} pikselden kısa olan kutuların oranı)")
 
-    # Sınıf başına, bölüm başına kare sayısı
-    counts = {split: Counter() for split in SPLITS}
-    for seg in segments:
-        split = assignment[seg["segment_id"]]
-        for image_id in seg["image_ids"]:
-            for name in images[image_id]["classes"]:
-                counts[split][name] += 1
+    lines += ["", "Kural kontrolü:"]
+    for rule, ok, detail in rules:
+        lines.append(f"  {'OK  ' if ok else 'HATA'}  {rule}: {detail}")
+
+    counts = {split: stats[split]["class_frames"] for split in SPLITS}
     all_classes = sorted(set().union(*[set(c) for c in counts.values()]))
 
     lines += ["", "Sınıf başına kare sayısı:", f"{'sınıf':<18}{'train':>8}{'val':>8}{'test':>8}  not"]
@@ -263,7 +377,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-ratio", type=float, default=0.10)
     parser.add_argument("--test-ratio", type=float, default=0.10)
-    parser.add_argument("--tries", type=int, default=2000, help="Denenecek rastgele bölme sayısı")
+    parser.add_argument("--tries", type=int, default=30000, help="Denenecek rastgele bölme sayısı")
     parser.add_argument("--label-set", default="fod", choices=["fod", "31"], help="fod = tek sınıf, 31 = 31 sınıf")
     parser.add_argument("--overwrite", action="store_true", help="Kayıtlı bölme farklıysa üzerine yaz")
     args = parser.parse_args()
@@ -273,12 +387,12 @@ def main():
 
     images = read_images(data_dir / "boxes.csv")
     segments = find_segments(images)
-    assignment = assign_splits(segments, args.seed, args.val_ratio, args.test_ratio, args.tries)
+    assignment, rules, n_ok = assign_splits(segments, args.seed, args.val_ratio, args.test_ratio, args.tries)
 
     save_splits_file(args.splits_file, splits_rows(segments, assignment), args.overwrite)
     build_folders(segments, assignment, voc_dir, data_dir, args.label_set)
 
-    report = make_report(segments, assignment, images, args.seed)
+    report = make_report(segments, assignment, rules, args.seed, args.tries, n_ok)
     print(report)
     report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)

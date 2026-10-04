@@ -1,0 +1,47 @@
+Seed: 42
+Video parçası sayısı: 116
+Toplam kare: 33793
+
+bölüm      kare    oran  parça  sınıf    en büyük parçanın payı
+train     26696   79.0%     86     27                      6.1%
+val        3587   10.6%     10     10                     24.8%
+test       3510   10.4%     20     20                     14.6%
+
+Sınıf başına kare sayısı:
+sınıf                train     val    test  not
+AdjustableClamp        544       0       0  yalnızca train'de
+AdjustableWrench         0     472       0  EĞİTİMDE YOK
+Battery                873     121      65  
+Bolt                  2409     891       0  
+BoltNutSet               0       0     514  EĞİTİMDE YOK
+BoltWasher             142     741     134  
+ClampPart              670     129     118  
+Cutter                1176       0     176  
+FuelCap                342       0     206  
+Hammer                 372     249     139  
+Hose                   294       0       0  yalnızca train'de
+Label                 1310       0       0  yalnızca train'de
+LuggagePart            564       0     174  
+LuggageTag            1519       0     167  
+MetalPart              561     289     120  
+MetalSheet             394       0       0  yalnızca train'de
+Nail                  1193       0       0  yalnızca train'de
+Nut                   1211       0      92  
+PaintChip              586     382       0  
+Pen                    483       0       0  yalnızca train'de
+PlasticPart           1815       0     193  
+Pliers                2679       0     205  
+Rock                   510       0     152  
+Screw                    0       0     157  EĞİTİMDE YOK
+Screwdriver            643       0     168  
+SodaCan                776       0     174  
+Tape                   127       0       0  yalnızca train'de
+Washer                1797     172     170  
+Wire                  1817     141     180  
+Wood                     0       0     206  EĞİTİMDE YOK
+Wrench                2568       0       0  yalnızca train'de
+
+Test'te olan ve eğitimde de görülen sınıflar (17): Battery, BoltWasher, ClampPart, Cutter, FuelCap, Hammer, LuggagePart, LuggageTag, MetalPart, Nut, PlasticPart, Pliers, Rock, Screwdriver, SodaCan, Washer, Wire
+Test'te olan ama eğitimde hiç olmayan sınıflar (3): BoltNutSet, Screw, Wood
+Test'te hiç olmayan sınıflar (11): AdjustableClamp, AdjustableWrench, Bolt, Hose, Label, MetalSheet, Nail, PaintChip, Pen, Tape, Wrench
+Val'de olan ama eğitimde hiç olmayan sınıflar (1): AdjustableWrench
