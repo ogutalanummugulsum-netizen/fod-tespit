@@ -23,6 +23,19 @@ Veri seti: [FOD-A](https://github.com/FOD-UNOmaha/FOD-data), Pascal VOC sürüm�
 - **Bölme video parçası bazında yapılır:** bir video parçası bütün olarak train, val ya da test'e gider. Tek videolu sınıflar tek bir bölüme düşebilir. Ayrıntılı kurallar aşağıda.
 - **Test raporu iki grup için ayrı hesaplanır:** eğitimde görülen sınıflar ve eğitimde hiç olmayan sınıflar.
 
+## Bölme donduruldu
+**4 Ekim 2026'da bölme onaylandı ve donduruldu.** Geçerli bölme, `41a85b89e` numaralı commit'teki `configs/splits.csv` dosyasıdır: train 26.906, val 3.448, test 3.439 kare (81 / 16 / 19 video parçası). Bölme artık değişmeyecek. `make_splits.py` kayıtlı bölmeden farklı bir sonuç üretirse durur. Bölmenin raporları `results/split_report.txt`, `results/split_check.txt` ve `results/box_size_report.csv` içindedir.
+
+## Test kuralı (sonuçlar görülmeden, 4 Ekim 2026'da yazıldı)
+Bu kural, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden kararlaştırıldı.
+
+- **Test edilecek modeller:** iki nihai model. YOLO11 nano'nun nihai modeli ve YOLO11 small'un nihai modeli.
+- **Kaç kez:** her nihai model test setinde **bir kez** değerlendirilir. Toplam iki test değerlendirmesi.
+- **Neye göre seçim:** hangi modelin daha iyi olduğuna **val** sonuçlarına bakılarak karar verilir. Epoch sayısı, görüntü boyutu ve diğer bütün ayarlar da val'e göre seçilir. Test sonucu hiçbir seçimde kullanılmaz, yalnızca son raporda yer alır.
+- **Deneme eğitimleri test edilmez.** Kısa deneme (`exp001_nano_deneme`) ve ara deneyler yalnızca val üzerinde ölçülür.
+- **Nasıl korunur:** `configs/fod.yaml` içinde test yolu yoktur, eğitim test klasörünü bilmez. `scripts/evaluate.py` test için `--final-test` ister, her test değerlendirmesini `results/test_log.csv` dosyasına yazar ve aynı deney için ikinci kez çalışmaz.
+- **Rapor:** test sonucu dört ölçümle (mAP50, mAP50-95, precision, recall) ve üç kırılımla verilir: eğitimde görülen / görülmeyen sınıflar, ışık koşulu, kutu boyutu. Her satırda kaç kareye ve kaç video parçasına dayandığı yazılır. Işık koşulu sonuçlarının, bütün verideki koşul dağılımına göre ağırlıklı ortalaması da verilir.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
@@ -47,6 +60,9 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 ## Sınırlar
 - **Benzerlik kontrolü bu veride ayırt edici değil.** `check_splits.py` görüntülerin 64 bitlik parmak izlerini (perceptual hash) karşılaştırır. Düz beton üstündeki küçük cisimler bu yönteme hep aynı görünür: gözle bakılan en benzer çiftler farklı cisim ve farklı sahne çıktı (örneğin cıvata-pul ile taş, 0 bit fark). Aynı videodaki komşu karelerin de yalnızca %83,8'i eşiğin altında kalır. Bu yüzden "benzer çift" sayıları sızıntı kanıtı sayılmaz; sızıntıya karşı asıl güvence, video parçalarının bölünmemesidir.
 - **Aynı cisim farklı ışıkta farklı bölümlere düşebilir.** Parçalar sınıf ve hava/ışık değişimine göre ayrılır. Aynı cismin kuru-aydınlık videosu train'de, loş ya da karanlık videosu test'te olabilir. Bu durumda test, "hiç görülmemiş cisim" değil "görülmüş cismin başka koşuldaki hali" ölçer. Eğitimde hiç olmayan sınıflar bu yüzden ayrıca raporlanır.
+- **Test ve val, ışık koşulu olarak veri setinin geneline benzemiyor.** Test karelerinin yaklaşık yarısı karanlık çekim (%45; bütün veride %13), val karelerinin yarıdan fazlası ıslak zemin (%56; bütün veride %21). Aydınlık çekimler bütün verinin %50'si, ama test'in %13'ü ve val'in %10'u. Test puanı ortalama koşuldan daha zor bir durumu ölçer.
+- **Test'teki Bolt tek bir kısa video (182 kare) ve içinde 32 pikselden küçük kutu yok.** Test, küçük görünen Bolt'u ölçmez.
+- **16 pikselden küçük kutular test'te train'e göre az:** test'te %5,6, train'de %9,3.
 - **Video parçası sınırları tahmindir.** Dosya adlarında video bilgisi yok; sınırlar etiketlerden çıkarıldı.
 - **Veri gerçek pist kamerasına benzemiyor.** Görüntüler 300×300 yakın plan çekimler, kutuların yaklaşık %40'ının uzun kenarı 96 piksel ve üzeri. Cisimsiz (boş) kare yok; yanlış alarm oranı bu veriyle ölçülemez.
 
