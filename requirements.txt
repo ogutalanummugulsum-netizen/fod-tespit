@@ -1,11 +1,12 @@
-# Nesne tespiti (YOLO)
-ultralytics>=8.3
+# Sürümler sabittir: aynı kod ileride de aynı paketlerle çalışsın.
 
-# Veri hazırlama ve raporlama
-numpy
-pandas
-matplotlib
-pillow
+# Nesne tespiti (YOLO)
+ultralytics==8.4.172
 
 # Benzer görüntüleri bulmak için (train/val/test sızıntı kontrolü)
-imagehash
+imagehash==4.3.2
+
+# numpy, pandas, matplotlib, pillow ve torch burada YOK, bilerek:
+# Colab'da hazır kurulu gelirler ve birbirine bağlıdırlar. Onları başka bir sürüme
+# zorlamak Colab'ı bozabilir. Bunun yerine train.py, her deneyde kullanılan bütün
+# paketlerin tam sürümlerini results/<deney>/environment.txt dosyasına yazar.

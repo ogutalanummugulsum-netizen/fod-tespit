@@ -1,0 +1,7 @@
+# YOLO veri ayarı (tek sınıf: FOD).
+# Bilerek yalnızca train ve val var: eğitim test setini hiç görmez.
+# "path" satırı yok; scripts/fod_data.py çalışırken veri klasörünün tam yolunu ekler.
+train: images/train
+val: images/val
+names:
+  0: FOD
