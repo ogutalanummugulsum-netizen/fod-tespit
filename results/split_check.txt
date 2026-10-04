@@ -1,0 +1,24 @@
+1) Kesin kontroller
+   Klasördeki görüntü sayıları: train=26906, val=3448, test=3439
+   Sorun yok: hiçbir görüntü iki bölümde değil, hiçbir video parçası bölünmemiş.
+
+2) Benzerlik kontrolü (eşik: 64 bitten en fazla 6 bit farklı)
+   Karşılaştırma için, aynı videodaki komşu kareler: ortanca fark 2 bit, %90'ı en fazla 10 bit, %83.8'i eşiğin altında
+
+   val <-> train
+     Benzer çift sayısı: 4664
+     train içinde benzeri olan val görüntüsü: 231 / 3448 (%6.7)
+     val görüntülerinin train içindeki en yakın görüntüye farkı: en az 0, ortanca 12 bit
+     En benzer 5 çift (gözle bakmak için): 023849~029937 (0 bit), 023850~029937 (0 bit), 023851~029937 (0 bit), 023852~029937 (0 bit), 023853~029937 (0 bit)
+
+   test <-> train
+     Benzer çift sayısı: 3754
+     train içinde benzeri olan test görüntüsü: 295 / 3439 (%8.6)
+     test görüntülerinin train içindeki en yakın görüntüye farkı: en az 0, ortanca 12 bit
+     En benzer 5 çift (gözle bakmak için): 028438~033745 (0 bit), 028439~033745 (0 bit), 028442~033745 (0 bit), 001092~030784 (2 bit), 001293~008467 (2 bit)
+
+   test <-> val
+     Benzer çift sayısı: 219
+     val içinde benzeri olan test görüntüsü: 80 / 3439 (%2.3)
+     test görüntülerinin val içindeki en yakın görüntüye farkı: en az 2, ortanca 14 bit
+     En benzer 5 çift (gözle bakmak için): 002622~033550 (2 bit), 002624~033555 (2 bit), 002625~033562 (2 bit), 002626~033559 (2 bit), 002627~033559 (2 bit)

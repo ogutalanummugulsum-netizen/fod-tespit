@@ -1,0 +1,63 @@
+Seed: 42
+Video parçası sayısı: 116
+Toplam kare: 33793
+Denenen bölme: 30000, bütün kurallara uyan: 99
+
+bölüm      kare    oran  parça  sınıf  en büyük parça  küçük kutu
+train     26906   79.6%     81     29            6.0%       20.2%
+val        3448   10.2%     16     16           21.5%       17.0%
+test       3439   10.2%     19     19            9.3%       16.3%
+(küçük kutu: uzun kenarı 32 pikselden kısa olan kutuların oranı)
+
+Kural kontrolü:
+  OK    val boyutu hedefin %10 yakınında: 3448 kare (hedef 3379)
+  OK    val: tek parça yarıyı geçmiyor: en büyük parça %21.5
+  OK    test boyutu hedefin %10 yakınında: 3439 kare (hedef 3379)
+  OK    test: tek parça yarıyı geçmiyor: en büyük parça %9.3
+  OK    test'te Bolt var: 182 kare
+  OK    test'te Nut var: 321 kare
+  OK    test'te Rock var: 185 kare
+  OK    val'de en az 12 parça: 16 parça
+  OK    val'de tek sınıf en fazla %25: en büyük sınıf BoltWasher %21.5
+  OK    val: küçük kutu oranı train'e yakın (en fazla 5 puan): val %17.0, train %20.2, fark -3.3 puan
+  OK    test: küçük kutu oranı train'e yakın (en fazla 5 puan): test %16.3, train %20.2, fark -3.9 puan
+  OK    test'te eğitimde olmayan 2-4 sınıf: 2 sınıf: Screw, Tape
+
+Sınıf başına kare sayısı:
+sınıf                train     val    test  not
+AdjustableClamp        544       0       0  yalnızca train'de
+AdjustableWrench       472       0       0  yalnızca train'de
+Battery                821      65     173  
+Bolt                  3118       0     182  
+BoltNutSet             514       0       0  yalnızca train'de
+BoltWasher             142     741     134  
+ClampPart              670     118     129  
+Cutter                 988     176     188  
+FuelCap                342     206       0  
+Hammer                 341     249     170  
+Hose                   294       0       0  yalnızca train'de
+Label                 1121       0     189  
+LuggagePart            528     210       0  
+LuggageTag            1270     236     180  
+MetalPart              582     168     220  
+MetalSheet             394       0       0  yalnızca train'de
+Nail                  1005     188       0  
+Nut                    982       0     321  
+PaintChip              605     177     186  
+Pen                    324       0     159  
+PlasticPart           1605     237     166  
+Pliers                2668       0     216  
+Rock                   362     115     185  
+Screw                    0       0     157  EĞİTİMDE YOK
+Screwdriver            811       0       0  yalnızca train'de
+SodaCan                488     260     202  
+Tape                     0       0     127  EĞİTİMDE YOK
+Washer                2139       0       0  yalnızca train'de
+Wire                  1842     141     155  
+Wood                   206       0       0  yalnızca train'de
+Wrench                2407     161       0  
+
+Test'te olan ve eğitimde de görülen sınıflar (17): Battery, Bolt, BoltWasher, ClampPart, Cutter, Hammer, Label, LuggageTag, MetalPart, Nut, PaintChip, Pen, PlasticPart, Pliers, Rock, SodaCan, Wire
+Test'te olan ama eğitimde hiç olmayan sınıflar (2): Screw, Tape
+Test'te hiç olmayan sınıflar (12): AdjustableClamp, AdjustableWrench, BoltNutSet, FuelCap, Hose, LuggagePart, MetalSheet, Nail, Screwdriver, Washer, Wood, Wrench
+Val'de olan ama eğitimde hiç olmayan sınıflar (0): -
