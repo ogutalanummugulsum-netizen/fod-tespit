@@ -13,6 +13,9 @@ Kaldığı yerden devam: aynı komutu aynı --name ile yeniden çalıştırmak y
     - last.pt varsa ve eğitim bitmişse: yeniden eğitmez, bunu söyleyip çıkar.
     - last.pt yoksa: eğitime baştan başlar.
 
+Erken durdurma: --patience 10 verilirse, val puanı 10 epoch boyunca iyileşmezse eğitim
+--epochs sayısına ulaşmadan durur. En iyi model yine best.pt olarak saklanır.
+
 Sonuçların ölçümü bu script'te değil, evaluate.py'dedir.
 """
 
@@ -47,6 +50,7 @@ def main():
     parser.add_argument("--imgsz", type=int, default=320)
     parser.add_argument("--batch", type=int, default=64)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--patience", type=int, default=100, help="Val puanı bu kadar epoch iyileşmezse eğitim erken durur")
     parser.add_argument("--data-dir", default="data/yolo")
     parser.add_argument("--runs-dir", required=True, help="Ara kayıtların yazılacağı klasör (Drive'da olmalı)")
     parser.add_argument("--results-dir", default="results", help="Deney sonuçlarının yazılacağı klasör")
@@ -83,6 +87,7 @@ def main():
             imgsz=args.imgsz,
             batch=args.batch,
             seed=args.seed,
+            patience=args.patience,
             project=str(runs_dir),
             name=args.name,
             exist_ok=True,
@@ -100,6 +105,7 @@ def main():
         "imgsz": args.imgsz,
         "batch": args.batch,
         "seed": args.seed,
+        "patience": args.patience,
         "resumed": resumed,
         "run_dir": str(run_dir),
         "best_weights": str(best),

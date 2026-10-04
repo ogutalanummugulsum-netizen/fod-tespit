@@ -66,8 +66,15 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 - **Video parçası sınırları tahmindir.** Dosya adlarında video bilgisi yok; sınırlar etiketlerden çıkarıldı.
 - **Veri gerçek pist kamerasına benzemiyor.** Görüntüler 300×300 yakın plan çekimler, kutuların yaklaşık %40'ının uzun kenarı 96 piksel ve üzeri. Cisimsiz (boş) kare yok; yanlış alarm oranı bu veriyle ölçülemez.
 
+## Deney sırası
+1. `exp001_nano_deneme`: kısa deneme, 3 epoch. **Bitti** (4 Ekim 2026).
+2. `exp002_nano`: nano'nun asıl eğitimi. En fazla 50 epoch, val puanı 10 epoch iyileşmezse erken durur, görüntü boyutu 320.
+3. `exp003_small`: small modeli, exp002 ile aynı ayarlarla. Tek fark model.
+4. Val'e göre nano-small karşılaştırması ve yalnızca işlemciyle hız ölçümü.
+5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
+6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
+
 ## İleride yapılacaklar
-- Karşılaştırma için hazır (sızıntılı) `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
 - 31 sınıflı deney.
 
 ### Düşük maliyet hedefi için deneyler
