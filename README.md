@@ -2,6 +2,7 @@
 
 Havalimanı pist görüntülerinde vida, somun, taş gibi küçük yabancı cisimleri (FOD) tespit eden model.
 Ana hedef: radar ve özel kamera kullanan pahalı ticari FOD sistemlerine karşı düşük maliyetli bir alternatif.
+Proje hedefi: TEKNOFEST Üniversite Öğrencileri Araştırma Proje Yarışması'na ("Savunma, Uzay ve Havacılık" kategorisi) sunmak ve ileride ticari bir ürüne dönüştürmek.
 Veri seti: [FOD-A](https://github.com/FOD-UNOmaha/FOD-data), Pascal VOC sürümü (MIT lisansı).
 
 ## Klasörler
@@ -73,6 +74,20 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 4. Val'e göre nano-small karşılaştırması ve yalnızca işlemciyle hız ölçümü.
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
 6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
+7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:
+   - Boş asfalt fotoğrafları ve asfalt üzerinde cisim fotoğrafları.
+   - Maket zemin üzerinde demo videosu.
+
+## Kararlar (14 Kasım 2026)
+- **Hedef:** projeyi TEKNOFEST Üniversite Öğrencileri Araştırma Proje Yarışması'na ("Savunma, Uzay ve Havacılık" kategorisi) sunmak ve ileride ticari bir ürüne dönüştürmek.
+- **Lisans:** ticari seçenekleri açık tutmak için şimdilik depoya MIT gibi serbest bir lisans eklenmeyecek. Lisans kararını proje sahibi verecek.
+- **Kamera:** özel kamera yok. Gerçek dünya testi ve demo telefon kamerasıyla yapılacak (bkz. Deney sırası, 7. adım).
+
+### Lisans kararı için not: kullanılan bileşenlerin lisansları
+Bu bilgiler karar için hatırlatmadır, hukuki görüş değildir.
+- **Ultralytics (YOLO): AGPL-3.0.** Kapalı kaynak bir ticari üründe kullanmanın şartları ayrıca incelenmeli; Ultralytics bunun için ayrı bir ticari lisans sunuyor.
+- **FOD-A veri seti: MIT.** Ticari kullanıma izin verir, telif ve lisans bildiriminin korunmasını ister.
+- **imagehash: BSD (2 maddeli).**
 
 ## İleride yapılacaklar
 - 31 sınıflı deney.
