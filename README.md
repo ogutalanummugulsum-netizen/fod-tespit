@@ -37,6 +37,22 @@ Bu kural, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden kararla
 - **Nasıl korunur:** `configs/fod.yaml` içinde test yolu yoktur, eğitim test klasörünü bilmez. `scripts/evaluate.py` test için `--final-test` ister, her test değerlendirmesini `results/test_log.csv` dosyasına yazar ve aynı deney için ikinci kez çalışmaz.
 - **Rapor:** test sonucu dört ölçümle (mAP50, mAP50-95, precision, recall) ve üç kırılımla verilir: eğitimde görülen / görülmeyen sınıflar, ışık koşulu, kutu boyutu. Her satırda kaç kareye ve kaç video parçasına dayandığı yazılır. Işık koşulu sonuçlarının, bütün verideki koşul dağılımına göre ağırlıklı ortalaması da verilir.
 
+### Güven eşiği kuralı (eşik tablosu görülmeden, 16 Kasım 2026'da yazıldı)
+Bu kural, val eşik tablosu (`val_thresholds.csv`) hiç görülmeden kararlaştırıldı.
+
+- **Kural:** precision ve recall, **val'de F2'yi en yüksek yapan güven eşiğiyle** ölçülür. F2, recall'a precision'dan iki kat ağırlık verir. Gerekçe: pist güvenliğinde cisim kaçırmak, yanlış alarmdan daha tehlikelidir.
+- **Nasıl hesaplanır:**
+  - F2, bütün val üzerinden hesaplanır ("tümü" satırları), her nihai model için ayrı ayrı.
+  - Adaylar, `val_thresholds.csv` tablosundaki eşiklerdir: 0,05'ten 0,60'a 0,05 adımla, artı val'de F1'i en yüksek yapan eşik.
+  - Model kutusu, gerçek kutuyla en az %50 örtüşürse doğru sayılır.
+  - İki eşiğin F2'si eşitse yüksek olan seçilir, çünkü daha az yanlış alarm verir.
+- **Test'te:** bu eşik yalnızca val'e bakılarak belirlenir ve test değerlendirmesinde değiştirilmeden kullanılır. mAP50 ve mAP50-95 eşikten bağımsızdır.
+- **Önceki eşik:** şimdiye kadarki val raporlarında precision ve recall, F1'i en yüksek yapan eşikle verildi (exp001: 0,60, exp002: 0,61). Bu raporlar olduğu gibi kalır; F2 eşiği bundan sonraki raporlarda ve test'te kullanılır.
+
+### Raporlama ilkesi
+- **Asıl sonuçlar her zaman bütün val üzerinden verilir.** En sonda da bütün test üzerinden verilir.
+- Bir videonun ya da grubun çıkarıldığı hesaplar yalnızca açıklayıcı bilgidir, asıl sonuç olarak sunulmaz. Örneğin exp002'de val'deki kaçırmaların çoğu tek bir PaintChip videosundan geliyor; o video çıkarılınca recall yaklaşık 0,98 olur. Bu bilgi yalnızca hatanın nereden geldiğini açıklamak için verilir. exp002'nin asıl val recall'ı 0,9649'dur.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
