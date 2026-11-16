@@ -1,0 +1,17 @@
+{
+  "name": "exp002_nano",
+  "model": "yolo11n.pt",
+  "epochs": 50,
+  "imgsz": 320,
+  "batch": 64,
+  "seed": 0,
+  "patience": 10,
+  "resumed": false,
+  "run_dir": "/content/drive/MyDrive/fod_proje/runs/exp002_nano",
+  "best_weights": "/content/drive/MyDrive/fod_proje/runs/exp002_nano/weights/best.pt",
+  "date": "2026-11-16 19:08",
+  "git_commit": "c4e4d9b",
+  "ultralytics": "8.4.172",
+  "torch": "2.14.1+cu130",
+  "device": "Tesla T4"
+}

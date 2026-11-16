@@ -1,0 +1,26 @@
+kirilim,grup,kare,fazladan_kutulu_kare,kacirilan_cisimli_kare,fazladan_kutu,kacirilan_cisim
+ışık koşulu,Dry-Bright,338,21,88,23,88
+ışık koşulu,Dry-Dark,309,27,9,28,9
+ışık koşulu,Dry-Dim,865,0,14,0,14
+ışık koşulu,Wet-Dim,1936,0,15,0,15
+kutu boyutu,16-32 px,328,0,0,0,0
+kutu boyutu,32-64 px,816,0,2,0,2
+kutu boyutu,64-96 px,839,0,9,0,9
+kutu boyutu,<16 px,257,0,14,0,14
+kutu boyutu,>=96 px,1208,48,101,51,101
+video parçası,seg_003 Battery Dry-Dim,65,0,2,0,2
+video parçası,seg_007 BoltWasher Wet-Dim,741,0,15,0,15
+video parçası,seg_008 ClampPart Wet-Dim,118,0,0,0,0
+video parçası,seg_009 MetalPart Dry-Dark,168,0,9,0,9
+video parçası,seg_016 Cutter Dry-Dim,176,0,11,0,11
+video parçası,seg_017 PlasticPart Wet-Dim,237,0,0,0,0
+video parçası,seg_024 FuelCap Wet-Dim,206,0,0,0,0
+video parçası,seg_043 Hammer Dry-Dim,249,0,0,0,0
+video parçası,seg_048 LuggagePart Wet-Dim,210,0,0,0,0
+video parçası,seg_049 LuggageTag Wet-Dim,236,0,0,0,0
+video parçası,seg_062 Nail Wet-Dim,188,0,0,0,0
+video parçası,seg_067 PaintChip Dry-Bright,177,21,88,23,88
+video parçası,seg_087 Rock Dry-Dim,115,0,1,0,1
+video parçası,seg_095 SodaCan Dry-Dim,260,0,0,0,0
+video parçası,seg_102 Wire Dry-Dark,141,27,0,28,0
+video parçası,seg_114 Wrench Dry-Bright,161,0,0,0,0
