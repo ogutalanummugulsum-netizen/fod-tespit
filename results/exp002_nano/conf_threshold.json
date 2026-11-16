@@ -1,4 +1,5 @@
 {
-  "conf": 0.6096096096096096,
-  "kaynak": "val'in tamamında F1'i en yüksek yapan eşik"
+  "conf_f2": 0.25,
+  "conf_f1": 0.6096096096096096,
+  "kural": "val'in tamamında F2'yi en yüksek yapan eşik (README, Güven eşiği kuralı)"
 }

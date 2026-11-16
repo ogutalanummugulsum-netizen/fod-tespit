@@ -1,8 +1,10 @@
-Hata örnekleri (yalnızca val). Görüntüler 2 kat büyütülmüştür.
+Hata örnekleri (yalnızca val), güven eşiği 0.250. Görüntüler 2 kat büyütülmüştür.
 Yeşil kutu  : gerçek cisim, model buldu
 Sarı kutu   : gerçek cisim, model KAÇIRDI
 Mavi kutu   : modelin doğru tespiti (yanındaki sayı güven puanı)
-Kırmızı kutu: modelin FAZLADAN kutusu (yanlış tespit)
+Mor kutu    : CİSİMDE fazladan kutu (cismin parçası ya da ikinci kutu)
+Kırmızı kutu: BOŞ ZEMİNDE fazladan kutu
 Bir model kutusu, gerçek kutuyla en az %50 örtüşürse doğru sayılır.
+Fazladan kutu, gerçek kutuyla kesişiyor ya da ona 16 pikselden yakınsa 'cisimde' sayılır.
 Dosya adı: <grup>_<hata türü>_<görüntü no>.jpg
-error_counts.csv: her grupta ve her video parçasında kaç hata olduğu.
+Hata sayıları: val_breakdown.csv (her grup ve her video parçası için).
