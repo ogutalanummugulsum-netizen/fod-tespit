@@ -1,34 +1,40 @@
 """Eğitilmiş bir modeli val ya da test üzerinde ölçer ve kırılımlarıyla raporlar.
 
 Kullanım (val):
-    python scripts/evaluate.py --name exp001_nano_deneme --split val \
+    python scripts/evaluate.py --name exp002_nano --split val \
         --runs-dir /content/drive/MyDrive/fod_proje/runs \
         --results-dir /content/drive/MyDrive/fod_proje/results
 
 Kullanım (test, yalnızca nihai model için ve bir kez):
     python scripts/evaluate.py --name <deney> --split test --final-test --runs-dir ... --results-dir ...
 
-Ölçümler: mAP50, mAP50-95, precision, recall.
-Kırılımlar: tümü, sınıf grubu (eğitimde var / yok), ışık koşulu, kutu boyutu.
+Ölçümler: mAP50, mAP50-95, precision, recall ve hata sayıları.
+Kırılımlar: tümü, sınıf grubu (eğitimde var / yok), ışık koşulu, kutu boyutu; val'de ayrıca video parçası.
 Her satırda kaç kareye, kaç kutuya ve kaç video parçasına dayandığı yazar.
 
-Precision ve recall sabit bir güven eşiğiyle ölçülür. Eşik, val'in tamamında F1'i en
-yüksek yapan değerdir; val değerlendirmesinde bir kez belirlenir, dosyaya yazılır ve
-bütün kırılımlarda ve test'te aynısı kullanılır. Böylece gruplar birbiriyle karşılaştırılabilir.
+Güven eşiği (README, "Güven eşiği kuralı"):
+    - Val değerlendirmesinde eşik tablosu çıkarılır ve val'in tamamında F2'yi en yüksek yapan
+      eşik seçilir (adaylar: 0.05-0.60 arası 0.05 adımla + F1'i en yüksek yapan eşik; eşitlikte
+      yüksek olan). Bu eşik conf_threshold.json dosyasına yazılır.
+    - Test'te eşik yeniden hesaplanmaz; val'de yazılan F2 eşiği kullanılır.
+    - mAP50 ve mAP50-95 eşikten bağımsızdır (Ultralytics ile ölçülür).
+    - Precision, recall ve hata sayıları basit eşleştirmeyle hesaplanır: model kutusu, gerçek kutuyla
+      en az %50 örtüşürse (IoU >= 0.5) doğru sayılır.
+
+Yanlış alarmlar (fazladan kutular) yalnızca raporlama için ikiye ayrılır, eşik kuralını etkilemez:
+    - cisimde: gerçek bir kutuyla kesişen ya da ona 16 pikselden yakın olan (cismin parçası, ikinci kutu)
+    - zeminde: hiçbir gerçek kutuya yakın olmayan (boş zeminde alarm)
 
 Test koruması: test için --final-test gerekir, her test değerlendirmesi
 <results-dir>/test_log.csv dosyasına yazılır ve aynı deney için ikinci kez çalışmaz.
 
 Ürettiği dosyalar (<results-dir>/<name>/ altında):
-    <split>_breakdown.csv   -> kırılım tablosu
+    <split>_breakdown.csv   -> kırılım tablosu (ölçümler ve hata sayıları)
     <split>_metrics.json    -> genel sonuç, eşik ve ağırlıklar
-    conf_threshold.json     -> val'de belirlenen güven eşiği
-    val_errors/             -> yalnızca val: hata sayıları ve kutuları çizilmiş örnek görüntüler
+    conf_threshold.json     -> yalnızca val: F1 ve F2 eşikleri
     val_thresholds.csv      -> yalnızca val: farklı güven eşiklerinde precision, recall ve hata sayıları
+    val_errors/             -> yalnızca val: kutuları çizilmiş örnek hata görüntüleri
 ve <results-dir>/summary.csv dosyasına bir satır.
-
-Yalnızca val'de ek olarak: her video parçası için ayrı bir kırılım satırı ve hata örnekleri
-(fazladan kutu ve kaçırılan cisim). Test raporunda bunlar yoktur.
 """
 
 import argparse
@@ -49,9 +55,15 @@ SIZE_BINS = [0, 16, 32, 64, 96, 100000]
 SIZE_LABELS = ["<16 px", "16-32 px", "32-64 px", "64-96 px", ">=96 px"]
 MIN_SEGMENTS = 3  # bundan az video parçasına dayanan satır "az veri" diye işaretlenir
 METRICS = ["mAP50", "mAP50_95", "precision", "recall"]
+COUNTS = ["fazladan_kutu", "fazladan_kutu_cisimde", "fazladan_kutu_zeminde", "kacirilan_cisim"]
 SUMMARY_COLUMNS = [
     "exp_id", "date", "model", "imgsz", "epochs_max", "epochs_run", "best_epoch", "split",
-    "mAP50", "mAP50_95", "precision", "recall", "notes"]
+    "conf", "esik_kurali", "mAP50", "mAP50_95", "precision", "recall", "notes"]
+
+MATCH_IOU = 0.5   # model kutusu, gerçek kutuyla en az bu kadar örtüşürse doğru sayılır
+NEAR_PX = 16      # fazladan kutu, gerçek kutuya bu kadar pikselden yakınsa "cisimde" sayılır
+LOW_CONF = 0.01   # modelin bütün kutuları bu eşikle toplanır, sonra istenen eşikle süzülür
+THRESHOLDS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]  # eşik tablosundaki değerler
 
 # Hata örnekleri (yalnızca val): hangi gruplardan, her türden en fazla kaç görüntü
 ERROR_GROUPS = [
@@ -60,9 +72,6 @@ ERROR_GROUPS = [
     ("diger", None),
 ]
 EXAMPLES_PER_KIND = 8
-MATCH_IOU = 0.5  # model kutusu, gerçek kutuyla en az bu kadar örtüşürse doğru sayılır
-LOW_CONF = 0.01  # eşik tablosu için modelin bütün kutuları bu eşikle toplanır
-THRESHOLDS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]  # eşik tablosundaki değerler
 
 
 def load_image_table(data_dir):
@@ -113,6 +122,29 @@ def make_groups(part, per_segment=False):
     return groups
 
 
+def run_val(model, sub, data_dir, split, work_dir, tag, imgsz, batch):
+    """Bir görüntü grubunu YOLO ile ölçer; mAP değerlerini ve F1 eğrisini döner."""
+    image_list = work_dir / f"{tag}.txt"
+    image_dir = (data_dir / "images" / split).resolve()
+    image_list.write_text("\n".join(str(image_dir / f"{i}.jpg") for i in sub["image_id"]) + "\n", encoding="utf-8")
+    data_yaml = write_eval_yaml(data_dir, image_list, work_dir / f"{tag}.yaml")
+
+    # split="val": ayar dosyasındaki "val" satırı bizim görüntü listemizi gösterir
+    metrics = model.val(
+        data=str(data_yaml), split="val", imgsz=imgsz, batch=batch,
+        plots=False, verbose=False, project=str(work_dir), name=f"val_{tag}", exist_ok=True,
+    )
+    box = metrics.box
+    if len(np.asarray(box.f1_curve)) == 0:
+        raise SystemExit(f"'{tag}' grubunda ölçüm yapılamadı: model hiç tahmin üretmedi ya da etiket bulunamadı.")
+    return {
+        "mAP50": float(box.map50),
+        "mAP50_95": float(box.map),
+        "px": np.asarray(box.px),                  # güven eşikleri (0-1 arası 1000 nokta)
+        "f1_curve": np.asarray(box.f1_curve)[0],   # her eşikte F1
+    }
+
+
 def box_iou(box, others):
     """Bir kutunun, bir dizi kutuyla örtüşme oranı (IoU). Kutular: xmin, ymin, xmax, ymax."""
     x1 = np.maximum(box[0], others[:, 0])
@@ -123,6 +155,16 @@ def box_iou(box, others):
     area_box = (box[2] - box[0]) * (box[3] - box[1])
     area_others = (others[:, 2] - others[:, 0]) * (others[:, 3] - others[:, 1])
     return inter / (area_box + area_others - inter + 1e-9)
+
+
+def near_any(box, others, margin):
+    """Kutu, gerçek kutulardan biriyle kesişiyor ya da ona 'margin' pikselden yakın mı?"""
+    if len(others) == 0:
+        return False
+    grown = others + np.array([-margin, -margin, margin, margin])
+    overlap_x = (box[0] < grown[:, 2]) & (box[2] > grown[:, 0])
+    overlap_y = (box[1] < grown[:, 3]) & (box[3] > grown[:, 1])
+    return bool((overlap_x & overlap_y).any())
 
 
 def predict_all(model, part, boxes, data_dir, split, work_dir, imgsz, batch):
@@ -142,13 +184,18 @@ def predict_all(model, part, boxes, data_dir, split, work_dir, imgsz, batch):
             "scores": result.boxes.conf.cpu().numpy(),
             "gt": gt_boxes.get(image_id, np.zeros((0, 4))),
         }
+    missing = set(part["image_id"]) - set(predictions)
+    if missing:
+        raise SystemExit(f"{len(missing)} görüntü için tahmin alınamadı (örnek: {sorted(missing)[:3]}).")
     return predictions
 
 
 def match(prediction, conf):
     """Güven eşiğini geçen model kutularını gerçek kutularla eşleştirir.
 
-    Fazladan kutu: hiçbir gerçek kutuyla eşleşmeyen model kutusu (yanlış tespit).
+    Fazladan kutu: hiçbir gerçek kutuyla eşleşmeyen model kutusu (yanlış alarm).
+        cisimde: gerçek bir kutuyla kesişiyor ya da ona NEAR_PX pikselden yakın
+        zeminde: hiçbir gerçek kutuya yakın değil
     Kaçırılan cisim: hiçbir model kutusuyla eşleşmeyen gerçek kutu.
     """
     keep = prediction["scores"] >= conf
@@ -164,39 +211,64 @@ def match(prediction, conf):
         if ious[j] >= MATCH_IOU:
             gt_found[j] = True
             pred_ok[k] = True
-    return {"pred": pred, "scores": scores, "pred_ok": pred_ok, "gt": gt, "gt_found": gt_found}
+    fp_near = np.array([not ok and near_any(box, gt, NEAR_PX) for box, ok in zip(pred, pred_ok)], dtype=bool)
+    return {"pred": pred, "scores": scores, "pred_ok": pred_ok, "fp_near": fp_near, "gt": gt, "gt_found": gt_found}
+
+
+def count(matched, ids):
+    """Bir görüntü grubu için doğru tespit, hata sayıları, precision ve recall."""
+    tp = sum(int(matched[i]["pred_ok"].sum()) for i in ids)
+    fp = sum(int((~matched[i]["pred_ok"]).sum()) for i in ids)
+    fp_near = sum(int(matched[i]["fp_near"].sum()) for i in ids)
+    fn = sum(int((~matched[i]["gt_found"]).sum()) for i in ids)
+    return {
+        "precision": tp / (tp + fp) if tp + fp else 1.0,
+        "recall": tp / (tp + fn) if tp + fn else 1.0,
+        "fazladan_kutu": fp,
+        "fazladan_kutu_cisimde": fp_near,
+        "fazladan_kutu_zeminde": fp - fp_near,
+        "kacirilan_cisim": fn,
+        "kacirilan_cisimli_kare": sum(int((~matched[i]["gt_found"]).any()) for i in ids),
+    }
+
+
+def f_scores(precision, recall):
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    # F2: recall'a precision'dan iki kat ağırlık verir (cisim kaçırmak daha tehlikeli)
+    f2 = 5 * precision * recall / (4 * precision + recall) if precision + recall else 0.0
+    return f1, f2
 
 
 def threshold_table(predictions, part, conf_f1):
-    """Farklı güven eşiklerinde precision, recall ve hata sayıları (tümü ve ışık koşulu başına)."""
+    """Farklı güven eşiklerinde precision, recall ve hata sayıları (tümü ve ışık koşulu başına).
+
+    Ayrıca kurala göre F2 eşiğini döner: "tümü"nde F2'yi en yüksek yapan eşik, eşitlikte yüksek olan.
+    """
     thresholds = sorted(set(THRESHOLDS + [round(conf_f1, 3)]))
     groups = [("tümü", part)] + [(value, sub) for value, sub in part.groupby("isik", sort=True)]
     rows = []
-    for name, sub in groups:
-        ids = [i for i in sub["image_id"] if i in predictions]
-        for t in thresholds:
-            matched = [match(predictions[i], t) for i in ids]
-            tp = sum(int(m["pred_ok"].sum()) for m in matched)
-            fp = sum(int((~m["pred_ok"]).sum()) for m in matched)
-            fn = sum(int((~m["gt_found"]).sum()) for m in matched)
-            precision = tp / (tp + fp) if tp + fp else 1.0
-            recall = tp / (tp + fn) if tp + fn else 1.0
-            rows.append({
-                "grup": name,
-                "esik": t,
-                "precision": precision,
-                "recall": recall,
-                "F1": 2 * precision * recall / (precision + recall) if precision + recall else 0.0,
-                # F2: recall'a precision'dan iki kat ağırlık verir (cisim kaçırmak daha tehlikeli)
-                "F2": 5 * precision * recall / (4 * precision + recall) if precision + recall else 0.0,
-                "fazladan_kutu": fp,
-                "kacirilan_cisim": fn,
-                "kacirilan_cisimli_kare": sum(int((~m["gt_found"]).any()) for m in matched),
-                "not": "şu anki eşik (val'de F1 en yüksek)" if t == round(conf_f1, 3) else "",
-            })
+    for t in thresholds:
+        matched = {i: match(p, t) for i, p in predictions.items()}
+        for name, sub in groups:
+            c = count(matched, list(sub["image_id"]))
+            f1, f2 = f_scores(c["precision"], c["recall"])
+            rows.append({"grup": name, "esik": t, **c, "F1": f1, "F2": f2})
     table = pd.DataFrame(rows)
+
+    overall = table[table["grup"] == "tümü"]
+    best_f2 = overall["F2"].max()
+    conf_f2 = float(overall.loc[overall["F2"] == best_f2, "esik"].max())  # eşitlikte yüksek eşik
+
+    table["not"] = ""
+    table.loc[table["esik"] == round(conf_f1, 3), "not"] = "F1 eşiği"
+    table.loc[table["esik"] == conf_f2, "not"] = "F2 eşiği (seçilen)"
+    # Sıra: önce "tümü", sonra ışık koşulları; her grubun içinde eşik küçükten büyüğe
+    table["sira"] = table["grup"].map({name: k for k, (name, _) in enumerate(groups)})
+    table = table.sort_values(["sira", "esik"])
+    columns = ["grup", "esik", "precision", "recall", "F1", "F2"] + COUNTS + ["kacirilan_cisimli_kare", "not"]
+    table = table[columns]
     table[["precision", "recall", "F1", "F2"]] = table[["precision", "recall", "F1", "F2"]].round(4)
-    return table
+    return table, conf_f2
 
 
 def training_epochs(results_dir, train_info):
@@ -221,42 +293,30 @@ def draw_example(image_path, error, out_path, scale=2):
     for box, found in zip(error["gt"], error["gt_found"]):
         color = (0, 200, 0) if found else (255, 210, 0)  # yeşil: bulundu, sarı: kaçırıldı
         draw.rectangle([float(v) * scale for v in box], outline=color, width=3)
-    for box, score, ok in zip(error["pred"], error["scores"], error["pred_ok"]):
-        color = (40, 120, 255) if ok else (255, 0, 0)  # mavi: doğru tespit, kırmızı: fazladan kutu
+    for box, score, ok, near in zip(error["pred"], error["scores"], error["pred_ok"], error["fp_near"]):
+        if ok:
+            color = (40, 120, 255)   # mavi: doğru tespit
+        elif near:
+            color = (255, 0, 255)    # mor: cisimde fazladan kutu (parça / ikinci kutu)
+        else:
+            color = (255, 0, 0)      # kırmızı: boş zeminde fazladan kutu
         scaled = [float(v) * scale for v in box]
         draw.rectangle(scaled, outline=color, width=2)
         draw.text((scaled[0] + 3, scaled[1] + 3), f"{score:.2f}", fill=color)
     img.save(out_path, quality=90)
 
 
-def save_error_examples(errors, part, data_dir, split, out_dir):
-    """Hata sayılarını ve örnek görüntüleri kaydeder."""
+def save_error_examples(matched, part, data_dir, split, out_dir, conf):
+    """Kutuları çizilmiş örnek hata görüntülerini kaydeder (yalnızca val)."""
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
 
     part = part.copy()
-    part["fazladan_kutu"] = [int((~errors[i]["pred_ok"]).sum()) if i in errors else 0 for i in part["image_id"]]
-    part["kacirilan_cisim"] = [int((~errors[i]["gt_found"]).sum()) if i in errors else 0 for i in part["image_id"]]
+    part["fazladan_kutu"] = [int((~matched[i]["pred_ok"]).sum()) for i in part["image_id"]]
+    part["kacirilan_cisim"] = [int((~matched[i]["gt_found"]).sum()) for i in part["image_id"]]
 
-    # Hata sayıları: kırılım kırılım ve video parçası bazında
-    count_rows = []
-    for column, title in (("isik", "ışık koşulu"), ("boyut", "kutu boyutu"), ("segment_id", "video parçası")):
-        for value, sub in part.groupby(column, sort=True):
-            label = f"{value} {sub['classes'].iloc[0]} {sub['isik'].iloc[0]}" if column == "segment_id" else value
-            count_rows.append({
-                "kirilim": title,
-                "grup": label,
-                "kare": len(sub),
-                "fazladan_kutulu_kare": int((sub["fazladan_kutu"] > 0).sum()),
-                "kacirilan_cisimli_kare": int((sub["kacirilan_cisim"] > 0).sum()),
-                "fazladan_kutu": int(sub["fazladan_kutu"].sum()),
-                "kacirilan_cisim": int(sub["kacirilan_cisim"].sum()),
-            })
-    counts = pd.DataFrame(count_rows)
-    counts.to_csv(out_dir / "error_counts.csv", index=False)
-
-    # Örnek görüntüler: önce aydınlık grubu, sonra 96 piksel üstü, sonra kalanlar
+    # Önce aydınlık grubu, sonra 96 piksel üstü, sonra kalanlar
     image_dir = data_dir / "images" / split
     used = set()
     for group_name, mask in ERROR_GROUPS:
@@ -267,52 +327,23 @@ def save_error_examples(errors, part, data_dir, split, out_dir):
                 picks = np.linspace(0, len(candidates) - 1, EXAMPLES_PER_KIND).round().astype(int)
                 candidates = candidates.iloc[picks]
             for image_id in candidates["image_id"]:
-                draw_example(image_dir / f"{image_id}.jpg", errors[image_id], out_dir / f"{group_name}_{kind}_{image_id}.jpg")
+                draw_example(image_dir / f"{image_id}.jpg", matched[image_id], out_dir / f"{group_name}_{kind}_{image_id}.jpg")
                 used.add(image_id)
 
     (out_dir / "ACIKLAMA.txt").write_text(
-        "Hata örnekleri (yalnızca val). Görüntüler 2 kat büyütülmüştür.\n"
+        f"Hata örnekleri (yalnızca val), güven eşiği {conf:.3f}. Görüntüler 2 kat büyütülmüştür.\n"
         "Yeşil kutu  : gerçek cisim, model buldu\n"
         "Sarı kutu   : gerçek cisim, model KAÇIRDI\n"
         "Mavi kutu   : modelin doğru tespiti (yanındaki sayı güven puanı)\n"
-        "Kırmızı kutu: modelin FAZLADAN kutusu (yanlış tespit)\n"
+        "Mor kutu    : CİSİMDE fazladan kutu (cismin parçası ya da ikinci kutu)\n"
+        "Kırmızı kutu: BOŞ ZEMİNDE fazladan kutu\n"
         f"Bir model kutusu, gerçek kutuyla en az %{100 * MATCH_IOU:.0f} örtüşürse doğru sayılır.\n"
+        f"Fazladan kutu, gerçek kutuyla kesişiyor ya da ona {NEAR_PX} pikselden yakınsa 'cisimde' sayılır.\n"
         "Dosya adı: <grup>_<hata türü>_<görüntü no>.jpg\n"
-        "error_counts.csv: her grupta ve her video parçasında kaç hata olduğu.\n",
+        "Hata sayıları: val_breakdown.csv (her grup ve her video parçası için).\n",
         encoding="utf-8",
     )
-    return counts, len(used)
-
-
-def run_val(model, sub, data_dir, split, work_dir, tag, imgsz, batch):
-    """Bir görüntü grubunu YOLO ile ölçer; mAP değerlerini ve güven eşiği eğrilerini döner."""
-    image_list = work_dir / f"{tag}.txt"
-    image_dir = (data_dir / "images" / split).resolve()
-    image_list.write_text("\n".join(str(image_dir / f"{i}.jpg") for i in sub["image_id"]) + "\n", encoding="utf-8")
-    data_yaml = write_eval_yaml(data_dir, image_list, work_dir / f"{tag}.yaml")
-
-    # split="val": ayar dosyasındaki "val" satırı bizim görüntü listemizi gösterir
-    metrics = model.val(
-        data=str(data_yaml), split="val", imgsz=imgsz, batch=batch,
-        plots=False, verbose=False, project=str(work_dir), name=f"val_{tag}", exist_ok=True,
-    )
-    box = metrics.box
-    if len(np.asarray(box.p_curve)) == 0:
-        raise SystemExit(f"'{tag}' grubunda ölçüm yapılamadı: model hiç tahmin üretmedi ya da etiket bulunamadı.")
-    return {
-        "mAP50": float(box.map50),
-        "mAP50_95": float(box.map),
-        "px": np.asarray(box.px),                  # güven eşikleri (0-1 arası 1000 nokta)
-        "p_curve": np.asarray(box.p_curve)[0],     # her eşikte precision
-        "r_curve": np.asarray(box.r_curve)[0],     # her eşikte recall
-        "f1_curve": np.asarray(box.f1_curve)[0],   # her eşikte F1
-    }
-
-
-def at_threshold(result, conf):
-    """Verilen güven eşiğindeki precision ve recall."""
-    k = int(np.abs(result["px"] - conf).argmin())
-    return float(result["p_curve"][k]), float(result["r_curve"][k])
+    return len(used)
 
 
 def weighted_light_average(rows, table):
@@ -344,11 +375,16 @@ def update_summary(results_root, row):
         if "epochs" in summary.columns:  # eski biçim: tek "epochs" sütunu = istenen en fazla epoch
             summary = summary.rename(columns={"epochs": "epochs_max"})
         summary = summary.reindex(columns=SUMMARY_COLUMNS)
-        # Eski satırlarda eksikse: gerçek epoch sayısı ve en iyi epoch, deneyin eğitim eğrisinden doldurulur
+        summary["esik_kurali"] = summary["esik_kurali"].astype(object)  # yazı sütunu
+        # Eski satırlarda eksikse: epoch bilgisi eğitim eğrisinden, eşik deneyin eşik dosyasından doldurulur
         for k, old in summary.iterrows():
             exp_dir = results_root / str(old["exp_id"])
             if pd.isna(old["epochs_run"]) and (exp_dir / "training_curve.csv").exists():
                 summary.loc[k, ["epochs_run", "best_epoch"]] = training_epochs(exp_dir, {})
+            if pd.isna(old["conf"]) and (exp_dir / "conf_threshold.json").exists():
+                saved = json.loads((exp_dir / "conf_threshold.json").read_text(encoding="utf-8"))
+                if "conf_f2" not in saved:  # eski sürüm: yalnızca F1 eşiği vardı
+                    summary.loc[k, ["conf", "esik_kurali"]] = [round(saved["conf"], 3), "F1"]
         summary = summary[~((summary["exp_id"] == row["exp_id"]) & (summary["split"] == row["split"]))]
     else:
         summary = pd.DataFrame(columns=SUMMARY_COLUMNS)
@@ -387,8 +423,9 @@ def main():
     if not weights.exists():
         raise SystemExit(f"Model dosyası bulunamadı: {weights}")
 
-    # Test koruması
+    # Test koruması ve test eşiği (eşik val'de belirlenmiş olmalı)
     test_log = results_root / "test_log.csv"
+    threshold_file = results_dir / "conf_threshold.json"
     if args.split == "test":
         if not args.final_test:
             raise SystemExit(
@@ -397,6 +434,11 @@ def main():
             )
         if test_log.exists() and args.name in set(pd.read_csv(test_log)["exp_id"]):
             raise SystemExit(f"DUR: '{args.name}' deneyi test setinde zaten değerlendirilmiş (bkz. {test_log}).")
+        saved = json.loads(threshold_file.read_text(encoding="utf-8")) if threshold_file.exists() else {}
+        if "conf_f2" not in saved:
+            raise SystemExit(
+                f"DUR: {threshold_file} içinde F2 eşiği yok. Önce bu deneyi bu sürümle --split val ile değerlendir."
+            )
 
     train_info = {}
     if (results_dir / "train_info.json").exists():
@@ -406,7 +448,7 @@ def main():
 
     table, boxes = load_image_table(data_dir)
     part = table[table["split"] == args.split]
-    # Video parçası kırılımı ve hata örnekleri yalnızca val içindir; test raporu README'deki kırılımlarla sınırlıdır
+    # Video parçası kırılımı, eşik tablosu ve hata örnekleri yalnızca val içindir
     groups = make_groups(part, per_segment=args.split == "val")
 
     model = YOLO(str(weights))
@@ -415,26 +457,36 @@ def main():
         shutil.rmtree(work_dir)
     work_dir.mkdir(parents=True)
 
+    # 1) mAP: her grup Ultralytics ile ölçülür (eşikten bağımsız)
     results = []
     for k, (title, value, sub) in enumerate(groups):
-        print(f"Ölçülüyor: {title} / {value} ({len(sub)} kare)")
+        print(f"mAP ölçülüyor: {title} / {value} ({len(sub)} kare)")
         results.append(run_val(model, sub, data_dir, args.split, work_dir, f"g{k:02d}", imgsz, args.batch))
 
-    # Güven eşiği: val'de belirlenir, test'te aynısı kullanılır
-    threshold_file = results_dir / "conf_threshold.json"
+    # 2) Modelin bütün kutuları bir kez toplanır; eşik ve hata sayıları bunlardan hesaplanır
+    print("Tahminler toplanıyor...")
+    predictions = predict_all(model, part, boxes, data_dir, args.split, work_dir, imgsz, args.batch)
+
+    # 3) Güven eşiği: val'de kurala göre seçilir, test'te val'deki eşik kullanılır
     if args.split == "val":
         overall = results[0]
-        conf = float(overall["px"][int(overall["f1_curve"].argmax())])
-        threshold_file.write_text(json.dumps({"conf": conf, "kaynak": "val'in tamamında F1'i en yüksek yapan eşik"}, indent=2, ensure_ascii=False), encoding="utf-8")
-    else:
-        if not threshold_file.exists():
-            raise SystemExit(f"Güven eşiği bulunamadı: {threshold_file}. Önce bu deneyi --split val ile değerlendir.")
-        conf = json.loads(threshold_file.read_text(encoding="utf-8"))["conf"]
+        conf_f1 = float(overall["px"][int(overall["f1_curve"].argmax())])
+        print("Eşik tablosu hesaplanıyor...")
+        thresholds, conf_f2 = threshold_table(predictions, part, conf_f1)
+        thresholds.to_csv(results_dir / "val_thresholds.csv", index=False)
+        threshold_file.write_text(json.dumps({
+            "conf_f2": conf_f2,
+            "conf_f1": conf_f1,
+            "kural": "val'in tamamında F2'yi en yüksek yapan eşik (README, Güven eşiği kuralı)",
+        }, indent=2, ensure_ascii=False), encoding="utf-8")
+    conf = json.loads(threshold_file.read_text(encoding="utf-8"))["conf_f2"]
 
+    # 4) Kırılım tablosu: mAP + bu eşikte precision, recall ve hata sayıları
+    matched = {i: match(p, conf) for i, p in predictions.items()}
     rows = []
     for (title, value, sub), result in zip(groups, results):
-        precision, recall = at_threshold(result, conf)
         n_segments = sub["segment_id"].nunique()
+        c = count(matched, list(sub["image_id"]))
         rows.append({
             "kirilim": title,
             "grup": value,
@@ -443,17 +495,17 @@ def main():
             "video_parcasi": n_segments,
             "mAP50": result["mAP50"],
             "mAP50_95": result["mAP50_95"],
-            "precision": precision,
-            "recall": recall,
+            **{key: c[key] for key in ["precision", "recall"] + COUNTS},
             "not": "az veri" if n_segments < MIN_SEGMENTS and title != "video parçası" else "",
         })
 
     weighted_row, light_weights = weighted_light_average(rows, table)
     rows.append(weighted_row)
 
-    columns = ["kirilim", "grup", "kare", "kutu", "video_parcasi"] + METRICS + ["not"]
+    columns = ["kirilim", "grup", "kare", "kutu", "video_parcasi"] + METRICS + COUNTS + ["not"]
     breakdown = pd.DataFrame(rows)[columns]
     breakdown[METRICS] = breakdown[METRICS].round(4)
+    breakdown[COUNTS] = breakdown[COUNTS].astype("Int64")  # ağırlıklı ortalama satırında boş kalır
     breakdown.to_csv(results_dir / f"{args.split}_breakdown.csv", index=False)
 
     overall_row = rows[0]
@@ -463,6 +515,7 @@ def main():
         "weights": str(weights),
         "imgsz": imgsz,
         "conf_threshold": conf,
+        "esik_kurali": "F2",
         "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "git_commit": git_commit(),
         "epochs_max": train_info.get("epochs", ""),
@@ -471,6 +524,7 @@ def main():
         "light_weights": light_weights,
     }
     metrics_json.update({m: round(overall_row[m], 4) for m in METRICS})
+    metrics_json.update({key: overall_row[key] for key in COUNTS})
     (results_dir / f"{args.split}_metrics.json").write_text(json.dumps(metrics_json, indent=2, ensure_ascii=False), encoding="utf-8")
 
     summary_row = {
@@ -482,6 +536,8 @@ def main():
         "epochs_run": epochs_run,
         "best_epoch": best_epoch,
         "split": args.split,
+        "conf": conf,
+        "esik_kurali": "F2",
         "notes": args.note,
     }
     summary_row.update({m: round(overall_row[m], 4) for m in METRICS})
@@ -489,13 +545,8 @@ def main():
 
     n_examples = 0
     if args.split == "val":
-        print("Hata örnekleri çıkarılıyor...")
-        predictions = predict_all(model, part, boxes, data_dir, args.split, work_dir, imgsz, args.batch)
-        errors = {image_id: match(prediction, conf) for image_id, prediction in predictions.items()}
-        error_counts, n_examples = save_error_examples(errors, part, data_dir, args.split, results_dir / "val_errors")
-        print("Eşik tablosu hesaplanıyor...")
-        thresholds = threshold_table(predictions, part, conf)
-        thresholds.to_csv(results_dir / "val_thresholds.csv", index=False)
+        print("Hata örnekleri çiziliyor...")
+        n_examples = save_error_examples(matched, part, data_dir, args.split, results_dir / "val_errors", conf)
 
     if args.split == "test":
         entry = pd.DataFrame([{"exp_id": args.name, "date": metrics_json["date"], "weights": str(weights), "git_commit": metrics_json["git_commit"]}])
@@ -503,12 +554,10 @@ def main():
 
     shutil.rmtree(work_dir)
 
-    print(f"\nBölüm: {args.split}   Güven eşiği (val'de belirlendi): {conf:.3f}   Görüntü boyutu: {imgsz}")
+    print(f"\nBölüm: {args.split}   Güven eşiği (val'de F2 kuralıyla belirlendi): {conf:.3f}   Görüntü boyutu: {imgsz}")
     print(breakdown.to_string(index=False))
     if args.split == "val":
-        print(f"\nHata sayıları (güven eşiği {conf:.3f}, eşleşme IoU {MATCH_IOU}):")
-        print(error_counts.to_string(index=False))
-        print(f"\nGüven eşiğine göre precision ve recall (val, tümü; IoU {MATCH_IOU} ile eşleştirme):")
+        print(f"\nGüven eşiğine göre precision, recall ve hata sayıları (val, tümü; IoU {MATCH_IOU} ile eşleştirme):")
         print(thresholds[thresholds["grup"] == "tümü"].drop(columns="grup").to_string(index=False))
         print(f"\n{n_examples} örnek görüntü kaydedildi: {results_dir / 'val_errors'}")
     print(f"\nSonuçlar: {results_dir}")

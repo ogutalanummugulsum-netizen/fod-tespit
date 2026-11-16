@@ -47,7 +47,13 @@ Bu kural, val eşik tablosu (`val_thresholds.csv`) hiç görülmeden kararlaşt�
   - Model kutusu, gerçek kutuyla en az %50 örtüşürse doğru sayılır.
   - İki eşiğin F2'si eşitse yüksek olan seçilir, çünkü daha az yanlış alarm verir.
 - **Test'te:** bu eşik yalnızca val'e bakılarak belirlenir ve test değerlendirmesinde değiştirilmeden kullanılır. mAP50 ve mAP50-95 eşikten bağımsızdır.
-- **Önceki eşik:** şimdiye kadarki val raporlarında precision ve recall, F1'i en yüksek yapan eşikle verildi (exp001: 0,60, exp002: 0,61). Bu raporlar olduğu gibi kalır; F2 eşiği bundan sonraki raporlarda ve test'te kullanılır.
+- **Önceki eşik:** exp001 ve exp002'nin ilk val raporlarında precision ve recall, F1'i en yüksek yapan eşikle verildi (exp001: 0,60, exp002: 0,61). exp001 raporu olduğu gibi kalır. exp002, nihai model adayı olduğu için F2 kuralıyla yeniden değerlendirilir; F1'li ilk raporu git geçmişinde durur (commit `131fa4c70`). `summary.csv` içindeki `esik_kurali` sütunu her satırın hangi kuralla ölçüldüğünü gösterir.
+- **Ölçüm yöntemi (16 Kasım 2026'dan itibaren):** precision, recall ve hata sayıları basit eşleştirmeyle hesaplanır: model kutusu, gerçek kutuyla en az %50 örtüşürse (IoU ≥ 0,5) doğru sayılır. Önceki raporlarda precision ve recall, Ultralytics'in kendi eğrilerinden okunuyordu; iki yöntem aynı eşikte farklı sonuç verebilir. Örneğin exp002'de 0,61 eşiğinde Ultralytics precision 0,9716 / recall 0,9649 verirken basit eşleştirme 0,9849 / 0,9632 veriyor. Bu yüzden eski ve yeni raporların precision ve recall değerleri doğrudan karşılaştırılmamalı. mAP50 ve mAP50-95 yine Ultralytics ile ölçülür.
+
+### Yanlış alarmların ayrımı (yalnızca raporlama için)
+Yanlış alarmlar (fazladan kutular) iki gruba ayrılır. Bu ayrım eşik kuralını değiştirmez; val'de ve en sonda test'te aynı şekilde uygulanır.
+- **Cisimde:** gerçek bir cismin kutusuyla kesişen ya da ona 16 pikselden yakın olan fazladan kutu. Örnek: cismin bir parçasına çizilen kutu, aynı cisme çizilen ikinci kutu.
+- **Zeminde:** hiçbir gerçek cisme yakın olmayan fazladan kutu. Boş zeminde verilen alarm.
 
 ### Raporlama ilkesi
 - **Asıl sonuçlar her zaman bütün val üzerinden verilir.** En sonda da bütün test üzerinden verilir.
@@ -85,7 +91,7 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 
 ## Deney sırası
 1. `exp001_nano_deneme`: kısa deneme, 3 epoch. **Bitti** (4 Ekim 2026).
-2. `exp002_nano`: nano'nun asıl eğitimi. En fazla 50 epoch, val puanı 10 epoch iyileşmezse erken durur, görüntü boyutu 320.
+2. `exp002_nano`: nano'nun asıl eğitimi. En fazla 50 epoch, val puanı 10 epoch iyileşmezse erken durur, görüntü boyutu 320. **Bitti** (16 Kasım 2026): 26 epoch'ta durdu, en iyi epoch 16.
 3. `exp003_small`: small modeli, exp002 ile aynı ayarlarla. Tek fark model.
 4. Val'e göre nano-small karşılaştırması ve yalnızca işlemciyle hız ölçümü.
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
@@ -107,6 +113,7 @@ Bu bilgiler karar için hatırlatmadır, hukuki görüş değildir.
 
 ## İleride yapılacaklar
 - 31 sınıflı deney.
+- **Zaman filtresi (demo ve uyarı sistemi aşamasında):** bir cisim için uyarı verilmeden önce, cismin art arda birkaç karede görünmesi şart koşulacak. Amaç, tek karelik yanlış alarmları azaltmak. Bu filtre modelin ölçümünü ve eşik kuralını değiştirmez; uyarı sisteminin üstüne eklenir ve etkisi ayrıca ölçülür.
 
 ### Düşük maliyet hedefi için deneyler
 Ana hedef: radar ve özel kamera kullanan pahalı ticari FOD sistemlerine karşı düşük maliyetli bir alternatif.
