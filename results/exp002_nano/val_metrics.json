@@ -4,8 +4,11 @@
   "weights": "/content/drive/MyDrive/fod_proje/runs/exp002_nano/weights/best.pt",
   "imgsz": 320,
   "conf_threshold": 0.6096096096096096,
-  "date": "2026-11-16 19:10",
-  "git_commit": "c4e4d9b",
+  "date": "2026-11-16 19:32",
+  "git_commit": "d5ae13a",
+  "epochs_max": 50,
+  "epochs_run": 26,
+  "best_epoch": 16,
   "light_weights": {
     "Dry-Bright": 0.5013464326931613,
     "Wet-Dim": 0.2135353475571864,

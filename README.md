@@ -51,7 +51,7 @@ Bu kural, val eşik tablosu (`val_thresholds.csv`) hiç görülmeden kararlaşt�
 
 ### Raporlama ilkesi
 - **Asıl sonuçlar her zaman bütün val üzerinden verilir.** En sonda da bütün test üzerinden verilir.
-- Bir videonun ya da grubun çıkarıldığı hesaplar yalnızca açıklayıcı bilgidir, asıl sonuç olarak sunulmaz. Örneğin exp002'de val'deki kaçırmaların çoğu tek bir PaintChip videosundan geliyor; o video çıkarılınca recall yaklaşık 0,98 olur. Bu bilgi yalnızca hatanın nereden geldiğini açıklamak için verilir. exp002'nin asıl val recall'ı 0,9649'dur.
+- Bir videonun ya da grubun çıkarıldığı hesaplar yalnızca açıklayıcı bilgidir, asıl sonuç olarak sunulmaz. Örneğin exp002'de, F1 eşiğinde (0,61) val'de kaçırılan 127 cismin 88'i tek bir PaintChip videosundan geliyor; o video çıkarılınca recall yaklaşık 0,99 olur (39 / 3.271 kaçırma). Bu bilgi yalnızca hatanın nereden geldiğini açıklamak için verilir. exp002'nin asıl val recall'ı 0,9649'dur.
 
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
