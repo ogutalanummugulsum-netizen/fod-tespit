@@ -1,0 +1,3 @@
+olcum_yeri,islemci,cekirdek,torch_is_parcacigi,tarih,ultralytics,torch,git_commit,exp_id,model,parametre_sayisi,dosya_boyutu_mb,imgsz,conf,olculen_goruntu,hazirlik_ms,model_ms,ayiklama_ms,toplam_ortanca_ms,toplam_p90_ms,fps,uctan_uca_ortanca_ms,uctan_uca_fps
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.00GHz,2,1,2026-11-17 19:59,8.4.172,2.14.1+cu130,8b19891,exp002_nano,yolo11n.pt,2590035,5.18,320,0.25,300,1.25,30.83,0.66,32.73,46.81,30.6,33.66,29.7
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.00GHz,2,1,2026-11-17 19:59,8.4.172,2.14.1+cu130,8b19891,exp003_small,yolo11s.pt,9428179,18.25,320,0.4,300,1.38,74.24,0.76,76.36,114.81,13.1,77.39,12.9
