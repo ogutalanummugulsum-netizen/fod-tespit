@@ -1,0 +1,29 @@
+kirilim,grup,kare,kutu,video_parcasi,mAP50,mAP50_95,precision,recall,fazladan_kutu,fazladan_kutu_cisimde,fazladan_kutu_zeminde,kacirilan_cisim,not
+tümü,tümü,3448,3448,16,0.9835,0.8338,0.921,0.9872,292,277,15,44,
+sınıf grubu,eğitimde var,3448,3448,16,0.9835,0.8338,0.921,0.9872,292,277,15,44,
+ışık koşulu,Dry-Bright,338,338,2,0.9068,0.7444,0.6263,0.9024,182,179,3,33,az veri
+ışık koşulu,Dry-Dark,309,309,2,0.9136,0.7259,0.8297,0.9773,62,60,2,7,az veri
+ışık koşulu,Dry-Dim,865,865,5,0.9932,0.8706,0.9515,0.9988,44,38,6,1,
+ışık koşulu,Wet-Dim,1936,1936,7,0.995,0.8425,0.9979,0.9985,4,0,4,3,
+kutu boyutu,<16 px,257,257,1,0.995,0.7045,1.0,0.9883,0,0,0,3,az veri
+kutu boyutu,16-32 px,328,328,4,0.995,0.7589,1.0,1.0,0,0,0,0,
+kutu boyutu,32-64 px,816,816,10,0.995,0.8221,1.0,1.0,0,0,0,0,
+kutu boyutu,64-96 px,839,839,13,0.995,0.8641,0.9917,0.9988,7,3,4,1,
+kutu boyutu,>=96 px,1208,1208,13,0.9634,0.8614,0.8039,0.9669,285,274,11,40,
+video parçası,seg_003 Battery Dry-Dim,65,65,1,0.9947,0.7504,0.9286,1.0,5,5,0,0,
+video parçası,seg_007 BoltWasher Wet-Dim,741,741,1,0.995,0.7561,1.0,0.996,0,0,0,3,
+video parçası,seg_008 ClampPart Wet-Dim,118,118,1,0.995,0.9344,1.0,1.0,0,0,0,0,
+video parçası,seg_009 MetalPart Dry-Dark,168,168,1,0.9949,0.8434,0.9825,1.0,3,3,0,0,
+video parçası,seg_016 Cutter Dry-Dim,176,176,1,0.995,0.8287,0.9943,0.9943,1,1,0,1,
+video parçası,seg_017 PlasticPart Wet-Dim,237,237,1,0.995,0.91,0.9834,1.0,4,0,4,0,
+video parçası,seg_024 FuelCap Wet-Dim,206,206,1,0.995,0.8261,1.0,1.0,0,0,0,0,
+video parçası,seg_043 Hammer Dry-Dim,249,249,1,0.9948,0.8839,0.8676,1.0,38,32,6,0,
+video parçası,seg_048 LuggagePart Wet-Dim,210,210,1,0.995,0.9729,1.0,1.0,0,0,0,0,
+video parçası,seg_049 LuggageTag Wet-Dim,236,236,1,0.995,0.8612,1.0,1.0,0,0,0,0,
+video parçası,seg_062 Nail Wet-Dim,188,188,1,0.995,0.8467,1.0,1.0,0,0,0,0,
+video parçası,seg_067 PaintChip Dry-Bright,177,177,1,0.8147,0.6784,0.4545,0.8192,174,171,3,32,
+video parçası,seg_087 Rock Dry-Dim,115,115,1,0.995,0.7417,1.0,1.0,0,0,0,0,
+video parçası,seg_095 SodaCan Dry-Dim,260,260,1,0.995,0.9619,1.0,1.0,0,0,0,0,
+video parçası,seg_102 Wire Dry-Dark,141,141,1,0.7927,0.5799,0.6943,0.9504,59,57,2,7,
+video parçası,seg_114 Wrench Dry-Bright,161,161,1,0.995,0.8144,0.9524,0.9938,8,8,0,1,
+ışık koşulu,ağırlıklı ortalama (bütün verinin dağılımı),3448,3448,16,0.9399,0.7825,0.7826,0.9476,,,,,kaba tahmin

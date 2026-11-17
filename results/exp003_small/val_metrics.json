@@ -1,0 +1,27 @@
+{
+  "exp_id": "exp003_small",
+  "split": "val",
+  "weights": "/content/drive/MyDrive/fod_proje/runs/exp003_small/weights/best.pt",
+  "imgsz": 320,
+  "conf_threshold": 0.4,
+  "esik_kurali": "F2",
+  "date": "2026-11-17 19:38",
+  "git_commit": "57d013a",
+  "epochs_max": 50,
+  "epochs_run": 26,
+  "best_epoch": 16,
+  "light_weights": {
+    "Dry-Bright": 0.5013464326931613,
+    "Wet-Dim": 0.2135353475571864,
+    "Dry-Dim": 0.15529843458704465,
+    "Dry-Dark": 0.12981978516260764
+  },
+  "mAP50": 0.9835,
+  "mAP50_95": 0.8338,
+  "precision": 0.921,
+  "recall": 0.9872,
+  "fazladan_kutu": 292,
+  "fazladan_kutu_cisimde": 277,
+  "fazladan_kutu_zeminde": 15,
+  "kacirilan_cisim": 44
+}

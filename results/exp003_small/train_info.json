@@ -1,0 +1,17 @@
+{
+  "name": "exp003_small",
+  "model": "yolo11s.pt",
+  "epochs": 50,
+  "imgsz": 320,
+  "batch": 64,
+  "seed": 0,
+  "patience": 10,
+  "resumed": false,
+  "run_dir": "/content/drive/MyDrive/fod_proje/runs/exp003_small",
+  "best_weights": "/content/drive/MyDrive/fod_proje/runs/exp003_small/weights/best.pt",
+  "date": "2026-11-17 19:35",
+  "git_commit": "57d013a",
+  "ultralytics": "8.4.172",
+  "torch": "2.14.1+cu130",
+  "device": "Tesla T4"
+}
