@@ -67,6 +67,38 @@ Yanlış alarmlar (fazladan kutular) iki gruba ayrılır. Bu ayrım eşik kural�
 - **Test kuralı değişmiyor:** iki nihai model de (exp002_nano ve exp003_small) test setinde birer kez değerlendirilir. Bu ölçüt yalnızca hangisinin önerilen model olacağını belirler; test sonucu bu seçimi değiştirmez.
 - **Not:** iki model arasındaki farklar küçük ve büyük ölçüde birkaç videodan (PaintChip, Wire, Hammer) geliyor. small eşikten bağımsız mAP50-95'te biraz önde (0,834'e karşı 0,828).
 
+### Nihai modeller (17 Kasım 2026)
+Test'ten önce başka model denemesi yapılmayacak. Nihai modeller **exp002_nano** ve **exp003_small**'dur. Aynı cisme çizilen ikinci kutular modelde değil, uyarı sistemindeki zaman filtresiyle ele alınacak (bkz. "İleride yapılacaklar").
+
+### Test raporunda verilecekler (17 Kasım 2026, test çalıştırılmadan önce yazıldı)
+Bu liste test sonucu görülmeden yazıldı. **Sonuç ne çıkarsa çıksın, aşağıdakilerin hepsi raporlanacak.** Test sonucuna göre model, eşik, kırılım ya da gruplar değiştirilmeyecek; bir satır iyi ya da kötü çıktığı için rapordan çıkarılmayacak.
+
+**Neler, kaç kez, hangi eşikle**
+- İki nihai model: exp002_nano ve exp003_small. Her biri test setinde **bir kez**, aynı çalıştırmada değerlendirilir.
+- Her model **kendi val F2 eşiğiyle** ölçülür: nano 0,25, small 0,40. Eşikler test'te yeniden hesaplanmaz.
+- mAP50 ve mAP50-95 eşikten bağımsızdır. Precision, recall ve hata sayıları basit eşleştirmeyle (IoU ≥ 0,5) hesaplanır.
+- Test seti: 3.439 kare, 19 video parçası (`configs/splits.csv`, commit `41a85b89e`).
+
+**Her tabloda, her satır için verilecekler**
+- Ölçümler: mAP50, mAP50-95, precision, recall.
+- Hatalar: fazladan kutu (yanlış alarm) toplamı, bunun **cisimde** ve **zeminde** olanları, kaçırılan cisim.
+- Dayanak: kare, kutu ve video parçası sayısı. 3'ten az video parçasına dayanan satır "az veri" diye işaretlenir.
+
+**Tablolar**
+1. **Genel:** bütün test seti. Asıl sonuç budur.
+2. **Sınıf grubu:** eğitimde görülen sınıflar ve eğitimde hiç görülmeyen sınıflar (test'te Screw ve Tape) ayrı ayrı.
+3. **Işık koşulu:** kuru-aydınlık, kuru-loş, kuru-karanlık, ıslak-loş ayrı ayrı. Ayrıca bu dört sonucun, bütün verideki koşul dağılımına göre ağırlıklı ortalaması (aydınlık %50,1, ıslak-loş %21,4, loş %15,5, karanlık %13,0). Ağırlıklı ortalama "kaba tahmin" olarak işaretlenir.
+4. **Kutu boyutu:** uzun kenarı 16 pikselden küçük, 16-32, 32-64, 64-96, 96 piksel ve üzeri.
+5. **Karşılaştırmalar:** nano ve small'un test sonuçları yan yana; her modelin val ve test sonuçları yan yana.
+
+**Raporda ayrıca**
+- İşlemci hız ölçümü (`results/speed_cpu.csv`): parametre sayısı, dosya boyutu, iş parçacığı sayısıyla birlikte süre ve FPS. Hız ölçümü val görüntüleriyle yapılır, test görüntüleri kullanılmaz.
+- "Sınırlar" bölümündeki uyarılar, özellikle test'in yaklaşık yarısının karanlık çekim olduğu, test'teki Bolt'un tek kısa video olduğu ve 16 pikselden küçük kutuların test'te az olduğu.
+
+**Test'te yapılmayacaklar:** video parçası bazında kırılım, hata örneği görüntüleri ve eşik tablosu yalnızca val içindir; test'te çıkarılmaz.
+
+**Test'ten sonra:** modelde, eşikte ya da son işlemede (NMS vb.) yapılacak her değişiklik yeni bir sürümdür ve ayrı raporlanır. Yeni sürüm bu test setinde değerlendirilmiş sayılmaz.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
@@ -123,6 +155,7 @@ Bu bilgiler karar için hatırlatmadır, hukuki görüş değildir.
 
 ## İleride yapılacaklar
 - 31 sınıflı deney.
+- **NMS ve görüntü boyutu denemeleri (ertelendi):** aynı cisme çizilen ikinci kutuları azaltmak için kutu ayıklama (NMS) örtüşme eşiğini değiştirmek; küçük cisimler için görüntü boyutunu büyütmek. Bunlar nihai modellerin test değerlendirmesinden sonra yapılırsa **yeni sürüm** olarak ayrı raporlanır, test sonuçlarının yerine geçmez.
 - **ONNX ile hız ölçümü (ertelendi):** modelleri işlemciye uygun ONNX biçimine çevirip yeniden hız ölçmek. Ucuz cihazlarda modeller genelde böyle çalıştırılır. Çevrilen modelin doğruluğu da val'de yeniden kontrol edilmeli.
 - **Zaman filtresi (demo ve uyarı sistemi aşamasında):** bir cisim için uyarı verilmeden önce, cismin art arda birkaç karede görünmesi şart koşulacak. Amaç, tek karelik yanlış alarmları azaltmak. Bu filtre modelin ölçümünü ve eşik kuralını değiştirmez; uyarı sisteminin üstüne eklenir ve etkisi ayrıca ölçülür.
 
