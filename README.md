@@ -57,7 +57,15 @@ Yanlış alarmlar (fazladan kutular) iki gruba ayrılır. Bu ayrım eşik kural�
 
 ### Raporlama ilkesi
 - **Asıl sonuçlar her zaman bütün val üzerinden verilir.** En sonda da bütün test üzerinden verilir.
-- Bir videonun ya da grubun çıkarıldığı hesaplar yalnızca açıklayıcı bilgidir, asıl sonuç olarak sunulmaz. Örneğin exp002'de, F1 eşiğinde (0,61) val'de kaçırılan 127 cismin 88'i tek bir PaintChip videosundan geliyor; o video çıkarılınca recall yaklaşık 0,99 olur (39 / 3.271 kaçırma). Bu bilgi yalnızca hatanın nereden geldiğini açıklamak için verilir. exp002'nin asıl val recall'ı 0,9649'dur.
+- Bir videonun ya da grubun çıkarıldığı hesaplar yalnızca açıklayıcı bilgidir, asıl sonuç olarak sunulmaz. Örneğin exp002'de, F1 eşiğinde (0,61) val'de kaçırılan 127 cismin 88'i tek bir PaintChip videosundan geliyor; o video çıkarılınca recall yaklaşık 0,99 olur (39 / 3.271 kaçırma). Bu bilgi yalnızca hatanın nereden geldiğini açıklamak için verilir. exp002'nin o eşikteki asıl val recall'ı 0,9649'du; F2 kuralıyla (0,25) asıl val recall'ı 0,9936'dır.
+
+### Model karşılaştırma ölçütü (17 Kasım 2026)
+**Bu ölçüt, nano ve small'un val sonuçları görüldükten sonra, test sonucu görülmeden belirlendi.** Daha önce README'de yalnızca "hangisinin daha iyi olduğuna val'e bakılarak karar verilir" yazıyordu; hangi ölçüyle karar verileceği tanımlanmamıştı.
+
+- **Ölçüt:** her modelin kendi F2 eşiğinde, bütün val üzerinden hesaplanan **F2**. Eşik kuralıyla tutarlıdır ve "cisim kaçırmak yanlış alarmdan tehlikelidir" ilkesine uyar.
+- **Sonuç ve önerilen model: nano.** Val'de nano (exp002, eşik 0,25) F2 = 0,9806; small (exp003, eşik 0,40) F2 = 0,9732. Nano aynı zamanda daha küçük ve düşük maliyet hedefine daha uygun.
+- **Test kuralı değişmiyor:** iki nihai model de (exp002_nano ve exp003_small) test setinde birer kez değerlendirilir. Bu ölçüt yalnızca hangisinin önerilen model olacağını belirler; test sonucu bu seçimi değiştirmez.
+- **Not:** iki model arasındaki farklar küçük ve büyük ölçüde birkaç videodan (PaintChip, Wire, Hammer) geliyor. small eşikten bağımsız mAP50-95'te biraz önde (0,834'e karşı 0,828).
 
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
@@ -92,8 +100,10 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 ## Deney sırası
 1. `exp001_nano_deneme`: kısa deneme, 3 epoch. **Bitti** (4 Ekim 2026).
 2. `exp002_nano`: nano'nun asıl eğitimi. En fazla 50 epoch, val puanı 10 epoch iyileşmezse erken durur, görüntü boyutu 320. **Bitti** (16 Kasım 2026): 26 epoch'ta durdu, en iyi epoch 16.
-3. `exp003_small`: small modeli, exp002 ile aynı ayarlarla. Tek fark model.
-4. Val'e göre nano-small karşılaştırması ve yalnızca işlemciyle hız ölçümü.
+3. `exp003_small`: small modeli, exp002 ile aynı ayarlarla. Tek fark model. **Bitti** (17 Kasım 2026): 26 epoch'ta durdu, en iyi epoch 16.
+4. Val'e göre nano-small karşılaştırması (**bitti**, önerilen model nano; bkz. "Model karşılaştırma ölçütü") ve yalnızca işlemciyle hız ölçümü:
+   - Önce **Colab'ın işlemcisinde** (`scripts/benchmark_cpu.py`, defterde `IS = "hiz_olc"`). Sonuç: `results/speed_cpu.csv`. Her model için hız (ms, FPS), dosya boyutu (MB) ve parametre sayısı.
+   - **Demo aşamasında aynı script proje sahibinin kendi bilgisayarında da çalıştırılacak** (`--where kendi_bilgisayarim`).
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
 6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
 7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:
@@ -113,6 +123,7 @@ Bu bilgiler karar için hatırlatmadır, hukuki görüş değildir.
 
 ## İleride yapılacaklar
 - 31 sınıflı deney.
+- **ONNX ile hız ölçümü (ertelendi):** modelleri işlemciye uygun ONNX biçimine çevirip yeniden hız ölçmek. Ucuz cihazlarda modeller genelde böyle çalıştırılır. Çevrilen modelin doğruluğu da val'de yeniden kontrol edilmeli.
 - **Zaman filtresi (demo ve uyarı sistemi aşamasında):** bir cisim için uyarı verilmeden önce, cismin art arda birkaç karede görünmesi şart koşulacak. Amaç, tek karelik yanlış alarmları azaltmak. Bu filtre modelin ölçümünü ve eşik kuralını değiştirmez; uyarı sisteminin üstüne eklenir ve etkisi ayrıca ölçülür.
 
 ### Düşük maliyet hedefi için deneyler
