@@ -10,6 +10,9 @@ Nasıl ölçülür:
     - İlk --warmup görüntü ısınma içindir, ölçüme katılmaz.
     - Görüntüler tek tek işlenir (canlı kamerada olduğu gibi), görüntü boyutu eğitimdeki gibi (320).
     - Model, her deneyin val'de F2 kuralıyla belirlenen güven eşiğiyle çalıştırılır.
+    - Her model, --threads ile verilen her iş parçacığı sayısıyla ayrı ayrı ölçülür (örn. 1 ve 2).
+      Ultralytics işlemcide bu sayıyı kendisi "çekirdek sayısı - 1" yapar; bu yüzden sayı her
+      tahminden önce yeniden ayarlanır ve tahminden sonra okunarak doğrulanır.
     - Model süresi = hazırlık + model + kutu ayıklama (Ultralytics'in ölçtüğü süreler, diskten okuma hariç).
     - Uçtan uca süre = görüntüyü diskten okuma dahil, bir çağrının toplam süresi.
 
@@ -61,8 +64,15 @@ def pick_images(data_dir, n):
     return [str(data_dir / "images" / "val" / f"{val_ids[k]}.jpg") for k in picks]
 
 
-def benchmark(exp_id, runs_dir, results_root, images, warmup, imgsz):
-    """Bir modeli işlemcide ölçer ve sonuç satırını döner."""
+def predict(model, path, threads, imgsz, conf):
+    """Tek görüntü tahmini. İş parçacığı sayısı her çağrıdan önce yeniden ayarlanır, çünkü Ultralytics
+    modeli ilk kez işlemcide çalıştırırken bu sayıyı kendisi değiştirir ("çekirdek sayısı - 1")."""
+    torch.set_num_threads(threads)
+    return model.predict(path, device="cpu", imgsz=imgsz, conf=conf, verbose=False)[0]
+
+
+def benchmark(exp_id, runs_dir, results_root, images, warmup, imgsz, threads):
+    """Bir modeli işlemcide, verilen iş parçacığı sayısıyla ölçer ve sonuç satırını döner."""
     weights = runs_dir / exp_id / "weights" / "best.pt"
     if not weights.exists():
         raise SystemExit(f"Model dosyası bulunamadı: {weights}")
@@ -77,27 +87,33 @@ def benchmark(exp_id, runs_dir, results_root, images, warmup, imgsz):
     n_params = sum(p.numel() for p in model.model.parameters())  # tahminden önce sayılır
     size_mb = weights.stat().st_size / (1024 * 1024)
 
-    print(f"\n{exp_id}: {n_params / 1e6:.2f} milyon parametre, {size_mb:.1f} MB, güven eşiği {conf}")
+    print(f"\n{exp_id}, {threads} iş parçacığı: {n_params / 1e6:.2f} milyon parametre, {size_mb:.1f} MB, güven eşiği {conf}")
     print(f"  ısınma: {warmup} görüntü...")
     for path in images[:warmup]:
-        model.predict(path, device="cpu", imgsz=imgsz, conf=conf, verbose=False)
+        predict(model, path, threads, imgsz, conf)
 
     pre, inf, post, wall = [], [], [], []
     measured = images[warmup:]
+    used_threads = set()
     for k, path in enumerate(measured):
         start = time.perf_counter()
-        result = model.predict(path, device="cpu", imgsz=imgsz, conf=conf, verbose=False)[0]
+        result = predict(model, path, threads, imgsz, conf)
         wall.append((time.perf_counter() - start) * 1000)
+        used_threads.add(torch.get_num_threads())  # tahminden SONRA okunur: gerçekten kullanılan sayı
         pre.append(result.speed["preprocess"])
         inf.append(result.speed["inference"])
         post.append(result.speed["postprocess"])
         if (k + 1) % 100 == 0:
             print(f"  ölçülen: {k + 1}/{len(measured)}")
 
+    if used_threads != {threads}:
+        raise SystemExit(f"İş parçacığı sayısı istenen {threads} değil, ölçüm sırasında {sorted(used_threads)} oldu.")
+
     total = np.array(pre) + np.array(inf) + np.array(post)
     wall = np.array(wall)
     return {
         "exp_id": exp_id,
+        "is_parcacigi": threads,
         "model": model_name,
         "parametre_sayisi": n_params,
         "dosya_boyutu_mb": round(size_mb, 2),
@@ -125,39 +141,53 @@ def main():
     parser.add_argument("--n-images", type=int, default=300, help="Ölçülecek görüntü sayısı")
     parser.add_argument("--warmup", type=int, default=20, help="Ölçüme katılmayan ısınma görüntüsü sayısı")
     parser.add_argument("--imgsz", type=int, default=320)
+    parser.add_argument("--threads", type=int, nargs="+", default=None,
+                        help="Denenecek iş parçacığı sayıları, örn. 1 2 (varsayılan: 1 ve bütün çekirdekler)")
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir).resolve()
     runs_dir = Path(args.runs_dir)
     results_root = Path(args.results_dir)
     images = pick_images(data_dir, args.n_images + args.warmup)
+    thread_counts = sorted(set(args.threads or [1, os.cpu_count() or 1]))
 
     machine = {
         "olcum_yeri": args.where,
         "islemci": cpu_name(),
         "cekirdek": os.cpu_count(),
-        "torch_is_parcacigi": torch.get_num_threads(),
         "tarih": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "ultralytics": ultralytics.__version__,
         "torch": torch.__version__,
         "git_commit": git_commit(),
     }
-    print("Ölçüm yeri :", machine["olcum_yeri"])
-    print("İşlemci    :", machine["islemci"], f"({machine['cekirdek']} çekirdek, torch {machine['torch_is_parcacigi']} iş parçacığı)")
+    print("Ölçüm yeri    :", machine["olcum_yeri"])
+    print("İşlemci       :", machine["islemci"], f"({machine['cekirdek']} çekirdek)")
+    print("İş parçacığı  :", ", ".join(map(str, thread_counts)), "(her biri ayrı satır)")
     print("Ekran kartı kullanılmıyor: bütün tahminler device='cpu' ile yapılır.")
 
-    rows = [{**machine, **benchmark(exp_id, runs_dir, results_root, images, args.warmup, args.imgsz)} for exp_id in args.models]
+    rows = [
+        {**machine, **benchmark(exp_id, runs_dir, results_root, images, args.warmup, args.imgsz, threads)}
+        for exp_id in args.models
+        for threads in thread_counts
+    ]
     new = pd.DataFrame(rows)
 
     path = results_root / "speed_cpu.csv"
     if path.exists():
         old = pd.read_csv(path)
-        keep = ~(old["exp_id"].isin(new["exp_id"]) & (old["olcum_yeri"] == args.where))
-        new = pd.concat([old[keep], new], ignore_index=True)
+        if "is_parcacigi" not in old.columns:  # eski biçim: tek ölçüm, iş parçacığı sayısı başka sütunda
+            old["is_parcacigi"] = old.get("torch_is_parcacigi", 1)
+            old = old.drop(columns=["torch_is_parcacigi"], errors="ignore")
+        same = (
+            old["exp_id"].isin(new["exp_id"])
+            & (old["olcum_yeri"] == args.where)
+            & old["is_parcacigi"].isin(thread_counts)
+        )
+        new = pd.concat([old[~same], new], ignore_index=True)
     results_root.mkdir(parents=True, exist_ok=True)
     new.to_csv(path, index=False)
 
-    columns = ["exp_id", "parametre_sayisi", "dosya_boyutu_mb", "model_ms", "toplam_ortanca_ms",
+    columns = ["exp_id", "is_parcacigi", "parametre_sayisi", "dosya_boyutu_mb", "model_ms", "toplam_ortanca_ms",
                "toplam_p90_ms", "fps", "uctan_uca_ortanca_ms", "uctan_uca_fps"]
     print(f"\nSonuç ({args.where}, {machine['islemci']}):")
     print(pd.DataFrame(rows)[columns].to_string(index=False))

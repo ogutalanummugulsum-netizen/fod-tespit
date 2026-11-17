@@ -134,7 +134,7 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 2. `exp002_nano`: nano'nun asıl eğitimi. En fazla 50 epoch, val puanı 10 epoch iyileşmezse erken durur, görüntü boyutu 320. **Bitti** (16 Kasım 2026): 26 epoch'ta durdu, en iyi epoch 16.
 3. `exp003_small`: small modeli, exp002 ile aynı ayarlarla. Tek fark model. **Bitti** (17 Kasım 2026): 26 epoch'ta durdu, en iyi epoch 16.
 4. Val'e göre nano-small karşılaştırması (**bitti**, önerilen model nano; bkz. "Model karşılaştırma ölçütü") ve yalnızca işlemciyle hız ölçümü:
-   - Önce **Colab'ın işlemcisinde** (`scripts/benchmark_cpu.py`, defterde `IS = "hiz_olc"`). Sonuç: `results/speed_cpu.csv`. Her model için hız (ms, FPS), dosya boyutu (MB) ve parametre sayısı.
+   - Önce **Colab'ın işlemcisinde** (`scripts/benchmark_cpu.py`, defterde `IS = "hiz_olc"`). Sonuç: `results/speed_cpu.csv`. Her model için hız (ms, FPS), dosya boyutu (MB) ve parametre sayısı. Her model 1 ve 2 iş parçacığıyla ayrı ayrı ölçülür; iş parçacığı sayısı her satırda yazılır. (İlk ölçümde Ultralytics iş parçacığı sayısını kendisi "çekirdek sayısı - 1" = 1 yapmıştı; script artık sayıyı her tahminden önce ayarlıyor ve sonra doğruluyor.)
    - **Demo aşamasında aynı script proje sahibinin kendi bilgisayarında da çalıştırılacak** (`--where kendi_bilgisayarim`).
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
 6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
