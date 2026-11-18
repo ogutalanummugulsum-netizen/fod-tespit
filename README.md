@@ -99,6 +99,87 @@ Bu liste test sonucu görülmeden yazıldı. **Sonuç ne çıkarsa çıksın, a�
 
 **Test'ten sonra:** modelde, eşikte ya da son işlemede (NMS vb.) yapılacak her değişiklik yeni bir sürümdür ve ayrı raporlanır. Yeni sürüm bu test setinde değerlendirilmiş sayılmaz.
 
+## Test sonuçları (18 Kasım 2026)
+İki nihai model, test setinde birer kez değerlendirildi (`results/test_log.csv`; ağırlıklar Drive'daki `best.pt`, kod commit `504f8cd`, bölme commit `41a85b89e`). Her model kendi val F2 eşiğiyle ölçüldü: nano 0,25, small 0,40. Rapor, "Test raporunda verilecekler" listesine göre hazırlandı; hiçbir satır çıkarılmadı. Ham sonuçlar: `results/exp002_nano/test_breakdown.csv`, `results/exp003_small/test_breakdown.csv`, `test_metrics.json` dosyaları ve `results/summary.csv`.
+
+Kısaltmalar: P = precision, R = recall, FA = fazladan kutu (yanlış alarm), cisimde / zeminde = FA'nın ayrımı, Kaç. = kaçırılan cisim. Her satırda kare sayısı = kutu sayısı (her karede bir cisim var).
+
+### 1. Genel (asıl sonuç): bütün test, 3.439 kare, 19 video parçası
+
+| Model | Eşik | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. |
+|---|---|---|---|---|---|---|---|---|---|
+| exp002_nano | 0,25 | **0,9932** | **0,7811** | **0,9506** | **0,9788** | **175** | 107 | 68 | **73** |
+| exp003_small | 0,40 | 0,9846 | 0,7711 | 0,9436 | 0,9529 | 196 | 187 | 9 | 162 |
+
+### 2. Sınıf grubu
+
+| Grup | Kare | Parça | Model | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. | Not |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Eğitimde var | 3.155 | 17 | nano | 0,9930 | 0,7835 | 0,9513 | 0,9778 | 158 | 95 | 63 | 70 | |
+| | | | small | 0,9833 | 0,7745 | 0,9426 | 0,9528 | 183 | 176 | 7 | 149 | |
+| Eğitimde yok (Screw, Tape) | 284 | 2 | nano | 0,9950 | 0,7639 | 0,9430 | 0,9894 | 17 | 12 | 5 | 3 | az veri |
+| | | | small | 0,9950 | 0,7414 | 0,9542 | 0,9542 | 13 | 11 | 2 | 13 | az veri |
+
+### 3. Işık koşulu
+
+| Koşul | Kare | Parça | Model | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Kuru-aydınlık (Dry-Bright) | 448 | 3 | nano | 0,9599 | 0,3938 | 0,9324 | 0,9241 | 30 | 29 | 1 | 34 |
+| | | | small | 0,9211 | 0,3217 | 0,8981 | 0,8460 | 43 | 42 | 1 | 69 |
+| Kuru-loş (Dry-Dim) | 498 | 3 | nano | 0,9946 | 0,8324 | 0,9447 | 0,9940 | 29 | 29 | 0 | 3 |
+| | | | small | 0,9800 | 0,7943 | 0,8721 | 0,9719 | 71 | 71 | 0 | 14 |
+| Kuru-karanlık (Dry-Dark) | 1.562 | 8 | nano | 0,9936 | 0,8093 | 0,9351 | 0,9776 | 106 | 41 | 65 | 35 |
+| | | | small | 0,9923 | 0,8193 | 0,9722 | 0,9622 | 43 | 37 | 6 | 59 |
+| Islak-loş (Wet-Dim) | 931 | 5 | nano | 0,9947 | 0,8780 | 0,9894 | 0,9989 | 10 | 8 | 2 | 1 |
+| | | | small | 0,9929 | 0,8870 | 0,9589 | 0,9785 | 39 | 37 | 2 | 20 |
+| Ağırlıklı ortalama (bütün verinin dağılımı), **kaba tahmin** | 3.439 | 19 | nano | 0,9771 | 0,6192 | 0,9468 | 0,9579 | - | - | - | - |
+| | | | small | 0,9548 | 0,5804 | 0,9167 | 0,9089 | - | - | - | - |
+
+Ağırlıklar: aydınlık %50,1, ıslak-loş %21,4, loş %15,5, karanlık %13,0. Ağırlıklı ortalama genel sonuçtan düşük, çünkü test'te en kötü çıkan koşul (aydınlık) bütün veride en sık koşul.
+
+### 4. Kutu boyutu (uzun kenar)
+
+| Boyut | Kare | Parça | Model | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. | Not |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| <16 px | 193 | 2 | nano | 0,8105 | 0,2290 | 0,7347 | 0,7461 | 52 | 30 | 22 | 49 | az veri |
+| | | | small | 0,7425 | 0,2006 | 0,8170 | 0,6477 | 28 | 28 | 0 | 68 | az veri |
+| 16-32 px | 367 | 8 | nano | 0,9882 | 0,4512 | 0,9747 | 0,9455 | 9 | 8 | 1 | 20 | |
+| | | | small | 0,9804 | 0,4187 | 0,9462 | 0,9101 | 19 | 18 | 1 | 33 | |
+| 32-64 px | 603 | 13 | nano | 0,9949 | 0,7812 | 0,9726 | 1,0000 | 17 | 17 | 0 | 0 | |
+| | | | small | 0,9949 | 0,7811 | 0,9723 | 0,9884 | 17 | 15 | 2 | 7 | |
+| 64-96 px | 699 | 15 | nano | 0,9950 | 0,7968 | 0,9762 | 0,9957 | 17 | 12 | 5 | 3 | |
+| | | | small | 0,9940 | 0,7929 | 0,9698 | 0,9642 | 21 | 19 | 2 | 25 | |
+| ≥96 px | 1.577 | 16 | nano | 0,9949 | 0,8913 | 0,9517 | 0,9994 | 80 | 40 | 40 | 1 | |
+| | | | small | 0,9908 | 0,8918 | 0,9331 | 0,9816 | 111 | 107 | 4 | 29 | |
+
+### 5. Karşılaştırmalar
+
+**Val ve test yan yana** (val: 3.448 kare, 16 parça; test: 3.439 kare, 19 parça; aynı eşik):
+
+| Model | Bölüm | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. |
+|---|---|---|---|---|---|---|---|---|---|
+| nano | val | 0,9846 | 0,8281 | 0,9317 | 0,9936 | 251 | 220 | 31 | 22 |
+| nano | test | 0,9932 | 0,7811 | 0,9506 | 0,9788 | 175 | 107 | 68 | 73 |
+| small | val | 0,9835 | 0,8338 | 0,9210 | 0,9872 | 292 | 277 | 15 | 44 |
+| small | test | 0,9846 | 0,7711 | 0,9436 | 0,9529 | 196 | 187 | 9 | 162 |
+
+**Nano ve small:** yan yana karşılaştırma için 1-4. tablolara bakın. Karşılaştırma ölçütü olan F2 (val'de belirlendi), test'in P ve R değerlerinden hesaplanınca: nano 0,973, small 0,951. Sıralama val ile aynı.
+
+**İşlemci hızı:** bkz. "Deney sırası", 4. madde (iki Colab işlemcisi, 1 ve 2 iş parçacığı). Hız val görüntüleriyle ölçüldü; test görüntüleri kullanılmadı.
+
+### Sonuçların özeti
+- **Nano, test'te small'dan daha iyi:** mAP50, mAP50-95, P ve R'nin dördünde de önde, daha az yanlış alarm veriyor ve yarıdan az cisim kaçırıyor (73'e karşı 162). Ayrıca yaklaşık 2 kat hızlı ve 3,5 kat küçük. Val'e göre yapılan "nano önerilir" seçimi test'te de geçerli.
+- **Val'den test'e recall düştü** (nano 0,994'ten 0,979'a, small 0,987'den 0,953'e) ve mAP50-95 düştü (kutu yerinin tam bulunması). mAP50 düşmedi.
+- **En zayıf noktalar:** 16 pikselden küçük kutular (nano R 0,746; 73 kaçırmanın 49'u bu satırda, ama satır yalnızca 2 parçaya dayanıyor) ve kuru-aydınlık çekimler (nano R 0,924, mAP50-95 0,394).
+- **Eğitimde hiç görülmemiş cisim türleri** (Screw, Tape) nano'da 284 kutudan 3 kaçırmayla bulundu (2 parça, az veri).
+- **Nano'nun zemindeki yanlış alarmları** val'de 31 iken test'te 68 oldu; 65'i kuru-karanlık karelerde. Val'de bu türden bazı alarmların etiketlenmemiş gerçek cisim olduğu görülmüştü; test'te hata görüntüsü çıkarılmadığı için bu kontrol edilmedi ve edilmeyecek.
+
+### Bu sonuçları okurken (bkz. "Sınırlar")
+- Test'in yaklaşık yarısı (%45) karanlık çekim; aydınlık çekimler test'in yalnızca %13'ü (3 parça).
+- Test'teki Bolt tek kısa bir video (182 kare) ve içinde 32 pikselden küçük kutu yok.
+- 16 pikselden küçük kutular test'te az (193 kutu, 2 parça); bu satır "az veri".
+- Görüntüler 300×300 yakın plan ve her karede bir cisim var; boş kare olmadığı için cisimsiz bir pistteki yanlış alarm oranı bu testle ölçülemez. Veri gerçek pist kamerasına benzemiyor; gerçek dünya başarısı telefon kamerası testinde ayrıca ölçülecek.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
@@ -138,13 +219,21 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
    - **Demo aşamasında aynı script proje sahibinin kendi bilgisayarında da çalıştırılacak** (`--where kendi_bilgisayarim`).
    - **Colab işlemcisine göre hız yaklaşık 2 kat değişiyor.** Colab her oturumda farklı bir işlemci verebiliyor. İki ölçüm yapıldı ve ikisi de saklanıp raporlanacak:
 
-     | Tarih | İşlemci (Colab) | Oturum | nano, 1 iş parçacığı |
-     |---|---|---|---|
-     | 17 Kasım 2026 | Intel Xeon @ 2.00GHz | GPU'lu oturum, model işlemcide | 29,7 FPS (uçtan uca 33,66 ms) |
-     | 18 Kasım 2026 | Intel Xeon @ 2.20GHz | GPU'suz oturum | 14,9 FPS |
+     | Tarih | İşlemci (Colab, 2 çekirdek) | Oturum | Model | İş parçacığı | Model süresi (ortanca) | Uçtan uca (ortanca) | Uçtan uca FPS |
+     |---|---|---|---|---|---|---|---|
+     | 17 Kasım 2026 | Intel Xeon @ 2.00GHz | GPU'lu oturum, model işlemcide | nano | 1 | 32,73 ms | 33,66 ms | 29,7 |
+     | 17 Kasım 2026 | Intel Xeon @ 2.00GHz | GPU'lu oturum, model işlemcide | small | 1 | 76,36 ms | 77,39 ms | 12,9 |
+     | 18 Kasım 2026 | Intel Xeon @ 2.20GHz | GPU'suz oturum | nano | 1 | 65,20 ms | 67,15 ms | 14,9 |
+     | 18 Kasım 2026 | Intel Xeon @ 2.20GHz | GPU'suz oturum | nano | 2 | 60,46 ms | 62,27 ms | 16,1 |
+     | 18 Kasım 2026 | Intel Xeon @ 2.20GHz | GPU'suz oturum | small | 1 | 136,65 ms | 138,15 ms | 7,2 |
+     | 18 Kasım 2026 | Intel Xeon @ 2.20GHz | GPU'suz oturum | small | 2 | 129,43 ms | 131,01 ms | 7,6 |
+
+     Model süresi = hazırlık + model + kutu ayıklama; uçtan uca = diskten okuma dahil. 300 val görüntüsü, görüntü boyutu 320. Nano: 2.590.035 parametre, 5,18 MB; small: 9.428.179 parametre, 18,25 MB. 17 Kasım'da yalnızca 1 iş parçacığı ölçüldü.
+     - Her iki işlemcide de nano, small'dan yaklaşık 2,1-2,3 kat hızlı.
+     - 2 iş parçacığı bu işlemcide yalnızca %5-8 hızlandırdı (nedeni ölçülmedi).
 
      Saat hızı daha yüksek olan işlemci daha yavaş çıktı. Nedeni ölçülmedi; büyük olasılıkla işlemcinin nesli ve desteklediği komutlar ya da oturum türü (GPU'lu / GPU'suz) farkı. Saat hızı tek başına hızı belirlemiyor. Bu yüzden hız sonuçları her zaman işlemci adıyla birlikte verilir; tek bir FPS değeri "Colab hızı" diye raporlanmaz. Bütün satırlar `results/speed_cpu.csv` içindedir.
-5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
+5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı"). **Bitti** (18 Kasım 2026); bkz. "Test sonuçları".
 6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
 7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:
    - Boş asfalt fotoğrafları ve asfalt üzerinde cisim fotoğrafları.

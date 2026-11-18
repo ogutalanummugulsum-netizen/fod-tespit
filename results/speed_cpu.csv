@@ -1,3 +1,7 @@
-olcum_yeri,islemci,cekirdek,torch_is_parcacigi,tarih,ultralytics,torch,git_commit,exp_id,model,parametre_sayisi,dosya_boyutu_mb,imgsz,conf,olculen_goruntu,hazirlik_ms,model_ms,ayiklama_ms,toplam_ortanca_ms,toplam_p90_ms,fps,uctan_uca_ortanca_ms,uctan_uca_fps
-colab_cpu,Intel(R) Xeon(R) CPU @ 2.00GHz,2,1,2026-11-17 19:59,8.4.172,2.14.1+cu130,8b19891,exp002_nano,yolo11n.pt,2590035,5.18,320,0.25,300,1.25,30.83,0.66,32.73,46.81,30.6,33.66,29.7
-colab_cpu,Intel(R) Xeon(R) CPU @ 2.00GHz,2,1,2026-11-17 19:59,8.4.172,2.14.1+cu130,8b19891,exp003_small,yolo11s.pt,9428179,18.25,320,0.4,300,1.38,74.24,0.76,76.36,114.81,13.1,77.39,12.9
+olcum_yeri,islemci,cekirdek,tarih,ultralytics,torch,git_commit,exp_id,model,parametre_sayisi,dosya_boyutu_mb,imgsz,conf,olculen_goruntu,hazirlik_ms,model_ms,ayiklama_ms,toplam_ortanca_ms,toplam_p90_ms,fps,uctan_uca_ortanca_ms,uctan_uca_fps,is_parcacigi
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.00GHz,2,2026-11-17 19:59,8.4.172,2.14.1+cu130,8b19891,exp002_nano,yolo11n.pt,2590035,5.18,320,0.25,300,1.25,30.83,0.66,32.73,46.81,30.6,33.66,29.7,1
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.00GHz,2,2026-11-17 19:59,8.4.172,2.14.1+cu130,8b19891,exp003_small,yolo11s.pt,9428179,18.25,320,0.4,300,1.38,74.24,0.76,76.36,114.81,13.1,77.39,12.9,1
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.20GHz,2,2026-11-18 08:22,8.4.172,2.14.1+cpu,504f8cd,exp002_nano,yolo11n.pt,2590035,5.18,320,0.25,300,2.52,61.71,0.94,65.2,92.08,15.3,67.15,14.9,1
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.20GHz,2,2026-11-18 08:22,8.4.172,2.14.1+cpu,504f8cd,exp002_nano,yolo11n.pt,2590035,5.18,320,0.25,300,1.75,57.56,0.89,60.46,96.5,16.5,62.27,16.1,2
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.20GHz,2,2026-11-18 08:22,8.4.172,2.14.1+cpu,504f8cd,exp003_small,yolo11s.pt,9428179,18.25,320,0.4,300,1.75,134.06,0.82,136.65,205.51,7.3,138.15,7.2,1
+colab_cpu,Intel(R) Xeon(R) CPU @ 2.20GHz,2,2026-11-18 08:22,8.4.172,2.14.1+cpu,504f8cd,exp003_small,yolo11s.pt,9428179,18.25,320,0.4,300,1.71,126.63,0.87,129.43,300.97,7.7,131.01,7.6,2

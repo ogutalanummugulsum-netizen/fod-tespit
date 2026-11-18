@@ -2,3 +2,5 @@ exp_id,date,model,imgsz,epochs_max,epochs_run,best_epoch,split,conf,esik_kurali,
 exp001_nano_deneme,2026-10-04,yolo11n.pt,320,3,3,3,val,0.603,F1,0.9775,0.7954,0.9347,0.9843,kisa deneme
 exp002_nano,2026-11-16,yolo11n.pt,320,50,26,16,val,0.25,F2,0.9846,0.8281,0.9317,0.9936,asil egitim
 exp003_small,2026-11-17,yolo11s.pt,320,50,26,16,val,0.4,F2,0.9835,0.8338,0.921,0.9872,small asil egitim
+exp002_nano,2026-11-18,yolo11n.pt,320,50,26,16,test,0.25,F2,0.9932,0.7811,0.9506,0.9788,nihai test
+exp003_small,2026-11-18,yolo11s.pt,320,50,26,16,test,0.4,F2,0.9846,0.7711,0.9436,0.9529,nihai test

@@ -1,0 +1,27 @@
+{
+  "exp_id": "exp002_nano",
+  "split": "test",
+  "weights": "/content/drive/MyDrive/fod_proje/runs/exp002_nano/weights/best.pt",
+  "imgsz": 320,
+  "conf_threshold": 0.25,
+  "esik_kurali": "F2",
+  "date": "2026-11-18 08:51",
+  "git_commit": "504f8cd",
+  "epochs_max": 50,
+  "epochs_run": 26,
+  "best_epoch": 16,
+  "light_weights": {
+    "Dry-Bright": 0.5013464326931613,
+    "Wet-Dim": 0.2135353475571864,
+    "Dry-Dim": 0.15529843458704465,
+    "Dry-Dark": 0.12981978516260764
+  },
+  "mAP50": 0.9932,
+  "mAP50_95": 0.7811,
+  "precision": 0.9506,
+  "recall": 0.9788,
+  "fazladan_kutu": 175,
+  "fazladan_kutu_cisimde": 107,
+  "fazladan_kutu_zeminde": 68,
+  "kacirilan_cisim": 73
+}

@@ -1,0 +1,3 @@
+exp_id,date,weights,git_commit
+exp002_nano,2026-11-18 08:51,/content/drive/MyDrive/fod_proje/runs/exp002_nano/weights/best.pt,504f8cd
+exp003_small,2026-11-18 09:40,/content/drive/MyDrive/fod_proje/runs/exp003_small/weights/best.pt,504f8cd
