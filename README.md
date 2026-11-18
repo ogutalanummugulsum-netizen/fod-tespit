@@ -425,6 +425,7 @@ Hepsi, iyi ya da kötü, raporlanır. "Geçti/kaldı" sınırı yok. Eşleşme k
 - Telefonda konum etiketi kapatılır (Android: kamera ayarlarında "Konum etiketi"; iPhone: *Ayarlar → Gizlilik → Konum Servisleri → Kamera → Hiçbir Zaman*).
 - Yüklemeden önce her fotoğrafa bakılır. Yüz, kişi, plaka, ev numarası ya da yazı varsa fotoğraf silinir ve yeniden çekilir.
 - **Fotoğraflar repoya girmez** (repo herkese açık); yalnızca Drive'da durur (`fod_proje/telefon/<set>/foto/`). `.gitignore` `telefon/` altındaki görüntü dosyalarını engeller. Repoya yalnızca etiketler, çekim defteri ve sonuçlar girer.
+- Kod: `scripts/phone_eval.py`; defterde `IS = "telefon_pilot"`, `"telefon_test"` (`TEST_ONAY = "evet"` ile) ya da `"telefon_hata"`.
 - Script fotoğrafları yönüne göre çevirip okur. Hata görüntülerini yeniden çizerek kaydettiği için içlerinde fotoğrafın ek bilgisi (EXIF, konum dahil) bulunmaz.
 
 ## Bölme kuralları (2. sürüm, son)
