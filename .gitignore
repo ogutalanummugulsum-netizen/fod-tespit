@@ -12,3 +12,13 @@ __pycache__/
 
 # Proje kökünde kalmış veri kopyası (asıl veri data/raw içinde)
 /VOC2007/
+
+# Telefon testi: fotoğraflar repoya girmez (repo herkese açık), yalnızca Drive'da durur
+telefon/**/*.jpg
+telefon/**/*.jpeg
+telefon/**/*.JPG
+telefon/**/*.JPEG
+telefon/**/*.png
+telefon/**/*.PNG
+telefon/**/*.heic
+telefon/**/*.HEIC

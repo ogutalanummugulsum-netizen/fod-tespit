@@ -14,6 +14,7 @@ Veri seti: [FOD-A](https://github.com/FOD-UNOmaha/FOD-data), Pascal VOC sürüm�
 | `data/raw/` | İndirilen orijinal veri. **Hiç değiştirilmez.** |
 | `data/yolo/` | YOLO formatına çevrilmiş veri: `images/` ve `labels/` altında `train`, `val`, `test`. `all/` altında bölünmemiş etiketler, `boxes.csv` içinde tüm kutuların listesi |
 | `data/yolo_sizintili/` | Yalnızca sızıntı karşılaştırması için: hazır (sızıntılı) ayrımla aynı veri. Asıl deneylerde kullanılmaz |
+| `telefon/` | Telefon testi: sınıf listesi, çekim defteri şablonu; her set için etiketler ve çekim defteri. **Fotoğraflar burada değil, Drive'da** |
 | `results/` | Her deneyin sonuçları. `summary.csv` tüm deneylerin özetidir. |
 
 `data/` GitHub'a yüklenmez, Google Drive'da tutulur.
@@ -318,6 +319,114 @@ Sonuçlar görüldükten sonra fark edilen:
 - exp004 erken durmadı ve 50 epoch eğitildi; exp002'nin en iyi epoch'u 16 idi. Daha uzun eğitim farkın bir kısmını açıklayabilir. Bunu ayırmak için ayrı bir deney gerekir (ör. exp002'yi 50 epoch eğitmek); planlanmadı.
 - İki modelin eşiği farklı (0,25 ve 0,40). Plan gereği her biri kendi val eşiğiyle ölçüldü; P, R ve hata sayıları eşiğe bağlıdır, mAP bağlı değildir.
 
+## Telefon kamerasıyla gerçek dünya testi (plan ve ölçümler, 18 Kasım 2026, çekimden önce yazıldı)
+Bu bölüm hiçbir fotoğraf çekilmeden ve model hiçbir telefon fotoğrafını görmeden yazıldı. Amaç: FOD-A'da eğitilen modelin gerçek asfalt üzerinde, telefonla çekilmiş fotoğraflarda ne kadar başarılı olduğunu ölçmek. Gerçek bir pist değil, trafiğe kapalı boş bir asfalt alan (otopark, okul bahçesi) kullanılır.
+
+**Sabit olanlar:** model `exp002_nano` (nihai model), güven eşiği 0,25 (val'de F2 kuralıyla seçildi). Telefon fotoğraflarına bakılarak eşik ya da model değiştirilmez.
+
+### İki ayrı çekim
+| Set | Fotoğraf | Ne için | Model çalıştırılabilir mi |
+|---|---|---|---|
+| **Deneme (pilot)** | 30: 20 cisimli + 10 boş | Görüntü işleme yöntemini seçmek, çekim düzenini denemek | Evet, serbestçe |
+| **Test** | 300: 200 cisimli + 100 boş | Asıl sonuç | Yalnızca bir kez, etiketler commit edildikten sonra |
+
+Deneme seti test'ten farklı bir günde çekilir ve test'e hiçbir zaman girmez. Deneme setinde mümkün olduğunca her mesafeden ve her ışıktan fotoğraf olur.
+
+### Görüntü işleme yöntemi (denemede seçilir)
+Model 300×300 yakın plan karelerle eğitildi; telefon fotoğrafı yaklaşık 4000×3000 piksel. Fotoğraf olduğu gibi küçültülürse cisim birkaç piksele iner. Dört yöntem denenir:
+
+| Yöntem | Ne yapılır |
+|---|---|
+| `320` | Fotoğrafın uzun kenarı 320'ye küçültülür, model bir kez çalışır |
+| `640` | Uzun kenar 640'a küçültülür |
+| `1280` | Uzun kenar 1280'e küçültülür |
+| `parca` (tiling) | Uzun kenar 1920'den büyükse 1920'ye küçültülür. Fotoğraf 320×320 parçalara bölünür, komşu parçalar 80 piksel (%25) örtüşür; son parça kenara hizalanır. Model her parçada 320 boyutunda çalışır. Kutular fotoğrafın koordinatına taşınır ve birleştirilir: önce aynı cisme düşen tekrar kutular (örtüşme IoU ≥ 0,5) ayıklanır, sonra alanının en az %80'i daha emin bir kutunun içinde kalan parça kutular ayıklanır. |
+
+- `parca` için 1920 seçildi, çünkü demo videosunun genişliği (Full HD) 1920 piksel. Bu ölçekte yakından çekilmiş bir cıvata yaklaşık 50-140 piksel olur; eğitimdeki cisimler de bu boyutlardaydı.
+- Bu ayarlar (1920, 320, 80, 0,5, %80) denemede değiştirilmez; yalnızca dört yöntemden biri seçilir.
+- **Seçim kuralı:** dört yöntem deneme setinin tamamında (30 fotoğraf, boşlar dahil), eşik 0,25 ile ölçülür. **F2'si en yüksek olan seçilir.** F2 üç ondalığa yuvarlanınca eşitse **daha hızlı olan** seçilir.
+- **Hız:** her yöntem için fotoğraf başına süre (ortanca, ms) denemede yalnızca işlemciyle ölçülür. Süreye küçültme, parçalara bölme, model ve birleştirme dahil, diskten okuma hariç; ilk 3 fotoğraf ısınma sayılır. Dört yöntemin süresi de raporlanır. **`parca` seçilirse, tek seferlik yöntemlere göre ne kadar yavaş olduğu ayrıca not edilir.**
+- Seçilen yöntem `results/telefon_pilot/secim.json` dosyasına yazılır. Test bu dosyadaki yöntemle yapılır ve değiştirilemez.
+
+### Test setinin çekim düzeni
+**Cisimli 200 fotoğraf:** 3 mesafe × 3 ışık = 9 grup, her grupta yaklaşık 22 fotoğraf.
+
+| Mesafe | Nasıl |
+|---|---|
+| Yakın (~50 cm) | Çömelerek, telefon yere paralel, tam yukarıdan |
+| Orta (~1 m) | Ayakta, telefon göğüs hizasında, aşağı bakarak |
+| Uzak (~2-3 m) | Ayakta, eğik açıyla ileri bakarak; ufuk kadraja girmez |
+
+| Işık | Ne zaman |
+|---|---|
+| Aydınlık | Güneşli gündüz |
+| Loş | Bulutlu hava ya da gölge |
+| Akşam | Gün batımından sonraki ilk 30 dakika, flaş kapalı |
+| Islak (isteğe bağlı) | Yağmur yağarsa ek grup |
+
+- **Cisimler:** vida, somun, pul, cıvata, taş. Her fotoğrafta 1-3 cisim; beş tür toplamda yaklaşık eşit sayıda (her biri yaklaşık 70 kutu). Modelin eğitiminde **vida (Screw) hiç yoktu**; vida ayrıca raporlanır.
+- **Boş 100 fotoğraf** (hiç cisim yok), aynı ışık ve mesafelerde karışık: 50 temiz zemin, 50 "kafa karıştırıcı" zemin (boya çizgisi, çatlak, yağ lekesi, yaprak, rögar kapağı). FOD-A'da boş kare olmadığı için boş zemindeki yanlış alarm ilk kez burada ölçülür.
+- **Çekim kuralları:**
+  - Alan çekimden önce süpürülür.
+  - Telefonun kendi kamerası kullanılır: 1x lens, yakınlaştırma yok, portre modu yok, filtre yok.
+  - Biçim JPEG olur (iPhone'da *Ayarlar → Kamera → Biçimler → En Uyumlu*).
+  - Fotoğraflar yatay çekilir.
+- **Çekim defteri:** `telefon/cekim_defteri_sablon.csv` şablonuyla, her set için ayrı (Google E-Tablolar'da doldurulup CSV olarak indirilir). Sütunlar:
+
+  | Sütun | Ne yazılır |
+  |---|---|
+  | `dosya_adi` | Fotoğrafın dosya adı (ör. `IMG_1234.jpg`) |
+  | `tarih` | Çekim günü (ör. 2026-11-22) |
+  | `isik` | `aydinlik`, `los`, `aksam` ya da `islak` |
+  | `mesafe` | `yakin`, `orta` ya da `uzak` |
+  | `zemin` | `temiz` ya da `karistirici` |
+  | `karistirici_tur` | Zemin karıştırıcıysa ne olduğu (ör. `cizgi`, `catlak`, `leke`, `yaprak`, `rogar`) |
+  | `vida`, `somun`, `pul`, `civata`, `tas` | Fotoğrafa bırakılan cisim sayısı (yoksa 0 ya da boş) |
+  | `diger` | Bırakılmadığı halde görülen, 1 cm'den büyük gevşek cisim sayısı |
+  | `not` | İsteğe bağlı |
+
+### Etiketleme ve modelden bağımsızlık
+- **Araç:** [Make Sense](https://www.makesense.ai): ücretsiz, tarayıcıda çalışıyor, kurulum ve hesap gerekmiyor, YOLO formatında dışa aktarıyor. Kendi açıklamasına göre fotoğraflar sunucuya yüklenmiyor.
+- **Sınıflar:** `telefon/siniflar.txt` içindeki sırayla: vida, somun, pul, civata, tas, diger. Değerlendirmede hepsi tek "FOD" sınıfı sayılır; tür yalnızca kırılım içindir.
+- **Kutular:** cismin kenarlarına sıkı çizilir. Bırakılan cisimlere ek olarak, görülen 1 cm'den büyük her gevşek cisim `diger` olarak etiketlenir.
+- **Bağımsızlık kuralları:**
+  1. Test fotoğraflarında model hiç çalıştırılmadan etiketleme yapılır.
+  2. Script, her fotoğrafta her türün kutu sayısını çekim defteriyle karşılaştırır. Farklıysa durur ve fotoğrafı söyler; hata o aşamada düzeltilir.
+  3. Etiket dosyaları (küçük txt dosyaları) ve çekim defteri `telefon/<set>/` altında **repoya commit edilir**. Değerlendirme etiketleri repodan okur ve bu dosyalar commit edilmemiş ya da commit'ten sonra değiştirilmişse çalışmaz.
+  4. Test bir kez yapılır: `--final-test` gerekir, defterde `IS = "telefon_test"` ile birlikte `TEST_ONAY = "evet"` gerekir, kayıt `results/telefon_test_log.csv` içine yazılır ve ikinci kez çalışmaz.
+  5. Sonuç görüldükten sonra etiket değiştirilmez. Etiket hatası bulunursa asıl sonuç olduğu gibi kalır; düzeltilmiş sayı ayrıca ve "sonradan" notuyla verilir.
+
+### Raporlanacak ölçümler (test, bir kez)
+Hepsi, iyi ya da kötü, raporlanır. "Geçti/kaldı" sınırı yok. Eşleşme kuralı FOD-A ile aynı: model kutusu gerçek kutuyla IoU ≥ 0,5 örtüşürse doğru; yanlış alarm gerçek bir kutuya 16 pikselden yakınsa "cisimde", değilse "zeminde" (pikseller modele giren ölçekte).
+
+**Cisimli fotoğraflar:**
+- Asıl ölçütler: R, P, F2, kaçırılan cisim, yanlış alarm (cisimde / zeminde).
+- mAP50 ve mAP50-95 de verilir. mAP kendi kodumuzla hesaplanır, Ultralytics'in hesabıyla birebir aynı yöntem değildir. Elle çizilen kutular FOD-A kadar hassas olmadığı için mAP50-95 dikkatle okunur.
+- Fotoğraf düzeyinde: bütün cisimleri bulunan fotoğraf oranı, en az bir cismi bulunan fotoğraf oranı.
+
+**Boş fotoğraflar:** en az bir yanlış alarm olan fotoğraf sayısı ve oranı; fotoğraf başına yanlış alarm.
+
+**Bütün fotoğraflar (cisimli + boş):** P, R, F2 (denemedeki seçim ölçütüyle aynı).
+
+**Kırılımlar:**
+- Mesafe ve ışık: cisimli fotoğraflarda bütün ölçütler, boş fotoğraflarda yanlış alarm ölçütleri.
+- Cisim türü (vida ayrı: eğitimde yok) ve kutu boyutu (uzun kenar, modele giren ölçekte: <16, 16-32, 32-64, 64-96, ≥96 px): yalnızca R ve kaçırılan cisim. Bir yanlış alarmın türü ve boyutu olmadığı için P bu satırlarda verilmez.
+- Boş zemin türü: temiz / karıştırıcı.
+- 20'den az kutuya (boşlarda 20'den az fotoğrafa) dayanan satır "az veri" diye işaretlenir.
+
+**Karşılaştırma:** FOD-A test sonucuyla (nano: R 0,979, P 0,951) yan yana. Düşüş bekleniyor; fark sayı olarak verilir.
+
+**Hata görüntüleri:** yalnızca test'in asıl sayıları repoya commit edildikten sonra çıkarılabilir (`IS = "telefon_hata"`). Rapor ve sunum için örnek olarak kullanılır. Bunlara bakılarak yapılan her değişiklik (eşik, yöntem, yeniden eğitim) yeni sürüm sayılır ve **yeni çekilen fotoğraflarla** ölçülür; bu test setinde ölçülmüş sayılmaz.
+
+**Hız** test fotoğraflarıyla ölçülmez (denemedeki yöntem karşılaştırması dışında).
+
+### Gizlilik
+- Kamera yere bakar; ufuk, bina, araç kadraja girmez. Alanda insan ve araç yokken çekilir. Okul bahçesi ya da otopark için önceden izin alınır.
+- Telefonda konum etiketi kapatılır (Android: kamera ayarlarında "Konum etiketi"; iPhone: *Ayarlar → Gizlilik → Konum Servisleri → Kamera → Hiçbir Zaman*).
+- Yüklemeden önce her fotoğrafa bakılır. Yüz, kişi, plaka, ev numarası ya da yazı varsa fotoğraf silinir ve yeniden çekilir.
+- **Fotoğraflar repoya girmez** (repo herkese açık); yalnızca Drive'da durur (`fod_proje/telefon/<set>/foto/`). `.gitignore` `telefon/` altındaki görüntü dosyalarını engeller. Repoya yalnızca etiketler, çekim defteri ve sonuçlar girer.
+- Script fotoğrafları yönüne göre çevirip okur. Hata görüntülerini yeniden çizerek kaydettiği için içlerinde fotoğrafın ek bilgisi (EXIF, konum dahil) bulunmaz.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
@@ -373,7 +482,7 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
      Saat hızı daha yüksek olan işlemci daha yavaş çıktı. Nedeni ölçülmedi; büyük olasılıkla işlemcinin nesli ve desteklediği komutlar ya da oturum türü (GPU'lu / GPU'suz) farkı. Saat hızı tek başına hızı belirlemiyor. Bu yüzden hız sonuçları her zaman işlemci adıyla birlikte verilir; tek bir FPS değeri "Colab hızı" diye raporlanmaz. Bütün satırlar `results/speed_cpu.csv` içindedir.
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı"). **Bitti** (18 Kasım 2026); bkz. "Test sonuçları".
 6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek. Plan ve yorum kuralları: "Sızıntılı ayrım karşılaştırması" bölümü (defterde `IS = "sizinti"`). **Bitti** (18 Kasım 2026); bkz. "Sızıntılı ayrım sonuçları".
-7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:
+7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak. Test planı ve ölçümler: "Telefon kamerasıyla gerçek dünya testi" bölümü (çekimden önce yazıldı).
    - Boş asfalt fotoğrafları ve asfalt üzerinde cisim fotoğrafları.
    - Maket zemin üzerinde demo videosu.
 
