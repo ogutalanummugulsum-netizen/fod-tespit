@@ -13,6 +13,7 @@ Veri seti: [FOD-A](https://github.com/FOD-UNOmaha/FOD-data), Pascal VOC sürüm�
 | `notebooks/` | Colab defteri (`colab_train.ipynb`) |
 | `data/raw/` | İndirilen orijinal veri. **Hiç değiştirilmez.** |
 | `data/yolo/` | YOLO formatına çevrilmiş veri: `images/` ve `labels/` altında `train`, `val`, `test`. `all/` altında bölünmemiş etiketler, `boxes.csv` içinde tüm kutuların listesi |
+| `data/yolo_sizintili/` | Yalnızca sızıntı karşılaştırması için: hazır (sızıntılı) ayrımla aynı veri. Asıl deneylerde kullanılmaz |
 | `results/` | Her deneyin sonuçları. `summary.csv` tüm deneylerin özetidir. |
 
 `data/` GitHub'a yüklenmez, Google Drive'da tutulur.
@@ -180,6 +181,35 @@ Ağırlıklar: aydınlık %50,1, ıslak-loş %21,4, loş %15,5, karanlık %13,0.
 - 16 pikselden küçük kutular test'te az (193 kutu, 2 parça); bu satır "az veri".
 - Görüntüler 300×300 yakın plan ve her karede bir cisim var; boş kare olmadığı için cisimsiz bir pistteki yanlış alarm oranı bu testle ölçülemez. Veri gerçek pist kamerasına benzemiyor; gerçek dünya başarısı telefon kamerası testinde ayrıca ölçülecek.
 
+## Sızıntılı ayrım karşılaştırması (plan ve yorum kuralları, 18 Kasım 2026, sonuç görülmeden yazıldı)
+Amaç: veri setinin hazır `trainval.txt` / `test.txt` ayrımıyla eğitilen bir modelin puanının ne kadar şişkin çıktığını göstermek. Bu bölüm, `exp004_nano_sizintili` eğitilmeden ve hiçbir sonucu görülmeden yazıldı.
+
+**Nasıl yapılır**
+- Hazır ayrım: trainval 25.345, test 8.448 kare. Trainval'den rastgele %10 kare (seed 42, kare bazında) val olarak ayrılır. Bu val de bilerek sızıntılıdır; amaç yaygın "rastgele kare bölme" yöntemini taklit etmek. Hazır test, model seçiminde ve eşik belirlemede kullanılmaz.
+- Model: yalnızca nano, `exp004_nano_sizintili`. Ayarlar exp002 ile aynı: yolo11n, en fazla 50 epoch, patience 10, görüntü boyutu 320, batch 64, seed 0. Güven eşiği sızıntılı val'de F2 kuralıyla seçilir.
+- Ayrı veri klasörü (`data/yolo_sizintili`, `scripts/make_leaky_split.py`). Bizim bölmemize (`data/yolo`, `configs/splits.csv`) dokunulmaz. Sızıntı raporu: `results/leaky_split_report.txt`.
+- exp004, hazır test'te bir kez değerlendirilir (`test_log_sizintili.csv`). Sonuçlar `sizintili_val_*` ve `sizintili_test_*` adlı dosyalara yazılır, bizim test sonuçlarıyla karışmaz.
+
+**İki ölçüm**
+1. **Ortak kare karşılaştırması: sızıntının doğrudan etkisi (asıl ölçüm).** Hem hazır test'te hem bizim test setimizde olan kareler: 845 kare, bizim test'in 19 video parçasının hepsinden (bu sayılar sonuç görülmeden, yalnızca dosya listelerinden sayıldı). Bu parçaların hepsinin başka kareleri hazır trainval'de var.
+   - exp002_nano bu karelerin video parçalarını hiç görmedi (dürüst).
+   - exp004 aynı parçaların komşu karelerini eğitimde gördü (sızıntılı).
+   - İki model aynı karelerde, her biri kendi val F2 eşiğiyle ölçülür. Aradaki fark sızıntının doğrudan etkisi olarak raporlanır. Kırılımlar: tümü, sınıf grubu, ışık koşulu, kutu boyutu. Ayrıca aynı cisim için eşleştirilmiş tablo: ikisi de buldu / yalnız exp002 / yalnız exp004 / ikisi de kaçırdı.
+2. **Raporlanan puan farkı.** exp004'ün hazır test'teki (8.448 kare) sonucu ve exp002'nin bizim test'teki (3.439 kare) sonucu yan yana. İki test seti farklı karelerden oluştuğu için bu farkın tamamı sızıntı değildir; "bir makalede raporlanacak puan" ile "dürüst puan" arasındaki fark diye verilir. Işık koşulu ağırlıklı ortalaması iki model için aynı ağırlıklarla verilir.
+
+**Test kuralına istisna (yalnızca raporlama)**
+- exp002_nano, bizim test setinde **yalnızca bu 845 ortak karede bir kez daha** çalıştırılır. Nedeni: ilk test'te kare kare tahminler kaydedilmedi.
+- exp004 bizim test setinde yalnızca bu ortak karelerde değerlendirilir. Bu kareler zaten kendi hazır test'inin parçası.
+- Bu bir model seçimi ya da ayar değişikliği değildir. Model ve eşikler sabittir (exp002: 0,25). Sonuç ne çıkarsa çıksın nihai model, eşik ve bizim test sonuçları değişmez. exp004 demo, model seçimi ya da başka bir amaçla kullanılmaz.
+- Korumalar (`scripts/compare_leak.py`): `--final-test-subset` onayı gerekir. İki modelin kendi test değerlendirmesi önceden bitmiş olmalıdır. Karşılaştırma yalnızca bir kez çalışır (`results/leak_compare_log.csv`). Defterde `IS = "sizinti"` ile birlikte `TEST_ONAY = "evet"` gerekir.
+- Ortak karelerde video parçası kırılımı, hata görüntüsü ve eşik tablosu çıkarılmaz.
+- Tutarlılık kontrolü: exp002'nin ortak karelerdeki hata sayıları, bütün test'teki hata sayılarından (175 yanlış alarm, 73 kaçırma) fazla olamaz. Fazla çıkarsa bu da raporlanır.
+
+**Yorum kuralları**
+- Bütün sayılar, iyi ya da kötü, raporlanır. Fark için bir "anlamlı" eşiği konmaz; farklar sayı olarak ve dayandığı kare, kutu ve video parçası sayısıyla verilir. 3'ten az parçaya dayanan satır "az veri" diye işaretlenir.
+- Sızıntılı model ortak karelerde dürüst modelden daha iyi çıkarsa, bu fark "sızıntının puanı şişirmesi" olarak yorumlanır. Fark çıkmaz ya da ters çıkarsa bu da aynen yazılır.
+- Farkı etkileyebilecek başka nedenler de rapora yazılır: exp004'ün eğitim verisi daha az (yaklaşık 22.800 kareye karşı 26.906) ve farklı karelerden oluşuyor. exp004, bizim test'te "eğitimde yok" sayılan Screw ve Tape'i eğitimde gördü; bu da sızıntının bir parçasıdır. Ayrıca exp002'nin yeniden çalıştırılmasında, ilk test'e göre (işlemci ile ekran kartı farkından) çok küçük sayısal farklar olabilir.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
@@ -234,7 +264,7 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 
      Saat hızı daha yüksek olan işlemci daha yavaş çıktı. Nedeni ölçülmedi; büyük olasılıkla işlemcinin nesli ve desteklediği komutlar ya da oturum türü (GPU'lu / GPU'suz) farkı. Saat hızı tek başına hızı belirlemiyor. Bu yüzden hız sonuçları her zaman işlemci adıyla birlikte verilir; tek bir FPS değeri "Colab hızı" diye raporlanmaz. Bütün satırlar `results/speed_cpu.csv` içindedir.
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı"). **Bitti** (18 Kasım 2026); bkz. "Test sonuçları".
-6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
+6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek. Plan ve yorum kuralları: "Sızıntılı ayrım karşılaştırması" bölümü (defterde `IS = "sizinti"`).
 7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:
    - Boş asfalt fotoğrafları ve asfalt üzerinde cisim fotoğrafları.
    - Maket zemin üzerinde demo videosu.

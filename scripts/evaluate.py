@@ -28,9 +28,14 @@ Yanlış alarmlar (fazladan kutular) yalnızca raporlama için ikiye ayrılır, 
 Test koruması: test için --final-test gerekir, her test değerlendirmesi
 <results-dir>/test_log.csv dosyasına yazılır ve aynı deney için ikinci kez çalışmaz.
 
+Sızıntılı ayrım deneyi (README, Deney sırası 6. adım) başka bir veri klasörüyle çalışır:
+    --data-dir data/yolo_sizintili --split-label sizintili_test --test-log test_log_sizintili.csv
+Bizim veri klasörü (data/yolo) dışındaki bir klasörde test için bu iki ayar zorunludur; böylece
+sonuçlar ve log, bizim test sonuçlarıyla karışmaz.
+
 Ürettiği dosyalar (<results-dir>/<name>/ altında):
-    <split>_breakdown.csv   -> kırılım tablosu (ölçümler ve hata sayıları)
-    <split>_metrics.json    -> genel sonuç, eşik ve ağırlıklar
+    <etiket>_breakdown.csv  -> kırılım tablosu; etiket = --split-label, verilmezse bölüm adı (val / test)
+    <etiket>_metrics.json   -> genel sonuç, eşik ve ağırlıklar
     conf_threshold.json     -> yalnızca val: F1 ve F2 eşikleri
     val_thresholds.csv      -> yalnızca val: farklı güven eşiklerinde precision, recall ve hata sayıları
     val_errors/             -> yalnızca val: kutuları çizilmiş örnek hata görüntüleri
@@ -413,9 +418,18 @@ def main():
     parser.add_argument("--imgsz", type=int, default=None, help="Varsayılan: eğitimdeki görüntü boyutu")
     parser.add_argument("--batch", type=int, default=64)
     parser.add_argument("--note", default="", help="summary.csv'ye yazılacak not")
+    parser.add_argument("--split-label", default=None,
+                        help="Dosya adlarında ve summary.csv'de bölümün adı (varsayılan: --split), örn. sizintili_test")
+    parser.add_argument("--test-log", default="test_log.csv", help="Test değerlendirmelerinin log dosyası (results-dir içinde)")
     args = parser.parse_args()
+    label = args.split_label or args.split
 
     data_dir = Path(args.data_dir).resolve()
+    if args.split == "test" and data_dir.name != "yolo" and (label == "test" or args.test_log == "test_log.csv"):
+        raise SystemExit(
+            f"DUR: {data_dir} bizim veri klasörümüz değil. Bu klasörün test'i için --split-label ve --test-log "
+            "ayrı verilmeli (örn. --split-label sizintili_test --test-log test_log_sizintili.csv)."
+        )
     results_root = Path(args.results_dir)
     results_dir = results_root / args.name
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -424,7 +438,7 @@ def main():
         raise SystemExit(f"Model dosyası bulunamadı: {weights}")
 
     # Test koruması ve test eşiği (eşik val'de belirlenmiş olmalı)
-    test_log = results_root / "test_log.csv"
+    test_log = results_root / args.test_log
     threshold_file = results_dir / "conf_threshold.json"
     if args.split == "test":
         if not args.final_test:
@@ -452,7 +466,7 @@ def main():
     groups = make_groups(part, per_segment=args.split == "val")
 
     model = YOLO(str(weights))
-    work_dir = (data_dir / "eval_tmp" / f"{args.name}_{args.split}").resolve()
+    work_dir = (data_dir / "eval_tmp" / f"{args.name}_{label}").resolve()
     if work_dir.exists():
         shutil.rmtree(work_dir)
     work_dir.mkdir(parents=True)
@@ -506,12 +520,13 @@ def main():
     breakdown = pd.DataFrame(rows)[columns]
     breakdown[METRICS] = breakdown[METRICS].round(4)
     breakdown[COUNTS] = breakdown[COUNTS].astype("Int64")  # ağırlıklı ortalama satırında boş kalır
-    breakdown.to_csv(results_dir / f"{args.split}_breakdown.csv", index=False)
+    breakdown.to_csv(results_dir / f"{label}_breakdown.csv", index=False)
 
     overall_row = rows[0]
     metrics_json = {
         "exp_id": args.name,
-        "split": args.split,
+        "split": label,
+        "data_dir": data_dir.name,
         "weights": str(weights),
         "imgsz": imgsz,
         "conf_threshold": conf,
@@ -525,7 +540,7 @@ def main():
     }
     metrics_json.update({m: round(overall_row[m], 4) for m in METRICS})
     metrics_json.update({key: overall_row[key] for key in COUNTS})
-    (results_dir / f"{args.split}_metrics.json").write_text(json.dumps(metrics_json, indent=2, ensure_ascii=False), encoding="utf-8")
+    (results_dir / f"{label}_metrics.json").write_text(json.dumps(metrics_json, indent=2, ensure_ascii=False), encoding="utf-8")
 
     summary_row = {
         "exp_id": args.name,
@@ -535,7 +550,7 @@ def main():
         "epochs_max": train_info.get("epochs", ""),
         "epochs_run": epochs_run,
         "best_epoch": best_epoch,
-        "split": args.split,
+        "split": label,
         "conf": conf,
         "esik_kurali": "F2",
         "notes": args.note,
@@ -554,7 +569,7 @@ def main():
 
     shutil.rmtree(work_dir)
 
-    print(f"\nBölüm: {args.split}   Güven eşiği (val'de F2 kuralıyla belirlendi): {conf:.3f}   Görüntü boyutu: {imgsz}")
+    print(f"\nBölüm: {label} ({data_dir.name})   Güven eşiği (val'de F2 kuralıyla belirlendi): {conf:.3f}   Görüntü boyutu: {imgsz}")
     print(breakdown.to_string(index=False))
     if args.split == "val":
         print(f"\nGüven eşiğine göre precision, recall ve hata sayıları (val, tümü; IoU {MATCH_IOU} ile eşleştirme):")
