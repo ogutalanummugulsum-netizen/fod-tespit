@@ -136,6 +136,14 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 4. Val'e göre nano-small karşılaştırması (**bitti**, önerilen model nano; bkz. "Model karşılaştırma ölçütü") ve yalnızca işlemciyle hız ölçümü:
    - Önce **Colab'ın işlemcisinde** (`scripts/benchmark_cpu.py`, defterde `IS = "hiz_olc"`). Sonuç: `results/speed_cpu.csv`. Her model için hız (ms, FPS), dosya boyutu (MB) ve parametre sayısı. Her model 1 ve 2 iş parçacığıyla ayrı ayrı ölçülür; iş parçacığı sayısı her satırda yazılır. (İlk ölçümde Ultralytics iş parçacığı sayısını kendisi "çekirdek sayısı - 1" = 1 yapmıştı; script artık sayıyı her tahminden önce ayarlıyor ve sonra doğruluyor.)
    - **Demo aşamasında aynı script proje sahibinin kendi bilgisayarında da çalıştırılacak** (`--where kendi_bilgisayarim`).
+   - **Colab işlemcisine göre hız yaklaşık 2 kat değişiyor.** Colab her oturumda farklı bir işlemci verebiliyor. İki ölçüm yapıldı ve ikisi de saklanıp raporlanacak:
+
+     | Tarih | İşlemci (Colab) | Oturum | nano, 1 iş parçacığı |
+     |---|---|---|---|
+     | 17 Kasım 2026 | Intel Xeon @ 2.00GHz | GPU'lu oturum, model işlemcide | 29,7 FPS (uçtan uca 33,66 ms) |
+     | 18 Kasım 2026 | Intel Xeon @ 2.20GHz | GPU'suz oturum | 14,9 FPS |
+
+     Saat hızı daha yüksek olan işlemci daha yavaş çıktı. Nedeni ölçülmedi; büyük olasılıkla işlemcinin nesli ve desteklediği komutlar ya da oturum türü (GPU'lu / GPU'suz) farkı. Saat hızı tek başına hızı belirlemiyor. Bu yüzden hız sonuçları her zaman işlemci adıyla birlikte verilir; tek bir FPS değeri "Colab hızı" diye raporlanmaz. Bütün satırlar `results/speed_cpu.csv` içindedir.
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı").
 6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek.
 7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:

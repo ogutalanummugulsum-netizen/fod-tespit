@@ -18,7 +18,9 @@ Nasıl ölçülür:
 
 Ayrıca her model için dosya boyutu (MB) ve parametre sayısı kaydedilir.
 
-Sonuç: <results-dir>/speed_cpu.csv (aynı deney ve aynı ölçüm yeri için eski satır yenisiyle değişir).
+Sonuç: <results-dir>/speed_cpu.csv (yalnızca aynı deney, aynı ölçüm yeri, aynı işlemci ve aynı iş parçacığı sayısı için eski
+satır yenisiyle değişir; başka bir işlemcide yapılmış ölçümler korunur. Colab her oturumda farklı
+bir işlemci verebilir ve hız işlemciye göre belirgin biçimde değişir.)
 """
 
 import argparse
@@ -181,6 +183,7 @@ def main():
         same = (
             old["exp_id"].isin(new["exp_id"])
             & (old["olcum_yeri"] == args.where)
+            & (old["islemci"] == machine["islemci"])  # başka işlemcide yapılmış ölçüm korunur
             & old["is_parcacigi"].isin(thread_counts)
         )
         new = pd.concat([old[~same], new], ignore_index=True)
