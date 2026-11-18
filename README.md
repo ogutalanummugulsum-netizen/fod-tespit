@@ -215,6 +215,109 @@ Amaç: veri setinin hazır `trainval.txt` / `test.txt` ayrımıyla eğitilen bir
 - Sızıntılı model ortak karelerde dürüst modelden daha iyi çıkarsa, bu fark "sızıntının puanı şişirmesi" olarak yorumlanır. Fark çıkmaz ya da ters çıkarsa bu da aynen yazılır.
 - Farkı etkileyebilecek başka nedenler de rapora yazılır: exp004'ün eğitim verisi daha az (yaklaşık 22.800 kareye karşı 26.906) ve farklı karelerden oluşuyor. exp004, bizim test'te "eğitimde yok" sayılan Screw ve Tape'i eğitimde gördü; bu da sızıntının bir parçasıdır. Ayrıca exp002'nin yeniden çalıştırılmasında, ilk test'e göre (işlemci ile ekran kartı farkından) çok küçük sayısal farklar olabilir.
 
+## Sızıntılı ayrım sonuçları (18 Kasım 2026)
+Yukarıdaki plan ve yorum kurallarına göre yapıldı; hiçbir satır çıkarılmadı. Kod commit `edeae19`. exp004 hazır test'te bir kez (`results/test_log_sizintili.csv`), ortak kare karşılaştırması bir kez (`results/leak_compare_log.csv`) çalıştırıldı. Ham sonuçlar: `results/exp004_nano_sizintili/`, `results/leak_compare/`, `results/leaky_split_report.txt` ve `results/summary.csv`.
+
+Kısaltmalar: P = precision, R = recall, FA = fazladan kutu (yanlış alarm), cisimde / zeminde = FA'nın ayrımı, Kaç. = kaçırılan cisim.
+
+### Sızıntı raporu (doğrulandı)
+- Listelerin sorunları, README'de önceden yazılan sayılarla aynı çıktı: trainval'de 4 tekrar eden numara (47 fazla satır), test'te 4 tekrar eden numara (19 fazla satır), iki listede birden olan 4 görüntü (014567, 015731, 016653, 016763), hiçbir listede olmayan 70 görüntü (hepsi bizim bölmede train'de).
+- Kare sayıları: train 22.765, val 2.529, test 8.429. Ortak kare 845, 19 video parçası.
+- **Hazır test'in bütün kareleri (%100), eğitimde de bulunan bir video parçasından geliyor; %89,7'sinin hemen önceki ya da sonraki karesi eğitimde.** Ortak 845 karede bu oran %89,3. Hazır val'de de aynı: %100 ve %89,7.
+
+### Eğitim
+exp004, exp002 ile aynı ayarlarla eğitildi (yolo11n, en fazla 50 epoch, patience 10, 320, batch 64, seed 0; T4, yaklaşık 108 dakika). **Erken durmadı:** 50 epoch'un hepsini çalıştı, en iyi epoch 50 (exp002: 26 epoch'ta durdu, en iyi epoch 16). Son epoch'larda sızıntılı val puanı yatay (mAP50-95 0,899-0,900). Sızıntılı val'de seçilen güven eşiği (F2 kuralı) **0,40** (exp002: 0,25).
+
+Bu önceden yazılmamış bir farktır, sonuçla birlikte not edilir: sızıntılı val, eğitim karelerine çok benzediği için puan uzun süre yükselmeye devam etti ve erken durma devreye girmedi. Yani exp004 daha uzun eğitildi; bu da ortak karelerdeki farkı etkileyebilecek nedenlerden biridir.
+
+**Sızıntılı val ve sızıntılı test neredeyse aynı** (mAP50-95 0,9009 ve 0,9045; R 0,9899 ve 0,9898). Dürüst bölmede ise val'den test'e düşüş görülmüştü (nano mAP50-95 0,828'den 0,781'e). Sızıntılı ayrımda val de test de eğitime benzediği için bu düşüş görünmüyor.
+
+### 1. Ortak kare karşılaştırması: sızıntının doğrudan etkisi (asıl ölçüm)
+845 kare, 845 kutu, 19 video parçası. Her model kendi val F2 eşiğiyle (exp002 0,25; exp004 0,40). mAP eşikten bağımsızdır.
+
+| Model | Eşik | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. |
+|---|---|---|---|---|---|---|---|---|---|
+| exp002_nano (dürüst) | 0,25 | 0,9943 | 0,7893 | 0,9565 | 0,9882 | 38 | 23 | 15 | 10 |
+| exp004_nano_sizintili (sızıntılı) | 0,40 | 0,9950 | **0,9371** | **0,9988** | **1,0000** | **1** | 1 | 0 | **0** |
+| **Fark (sızıntılı - dürüst)** | | +0,0007 | **+0,1478** | +0,0423 | +0,0118 | -37 | -22 | -15 | -10 |
+
+**Eşleştirilmiş tablo: aynı cisim için iki modelin sonucu** (her model kendi eşiğiyle)
+
+| Kırılım | Grup | Kutu | İkisi de buldu | Yalnız exp002 | Yalnız exp004 | İkisi de kaçırdı |
+|---|---|---|---|---|---|---|
+| tümü | tümü | 845 | 835 | 0 | 10 | 0 |
+| ışık | Kuru-aydınlık (Dry-Bright) | 105 | 102 | 0 | 3 | 0 |
+| ışık | Kuru-karanlık (Dry-Dark) | 418 | 411 | 0 | 7 | 0 |
+| ışık | Kuru-loş (Dry-Dim) | 121 | 121 | 0 | 0 | 0 |
+| ışık | Islak-loş (Wet-Dim) | 201 | 201 | 0 | 0 | 0 |
+| boyut | <16 px (az veri, 2 parça) | 39 | 31 | 0 | 8 | 0 |
+| boyut | 16-32 px | 90 | 88 | 0 | 2 | 0 |
+| boyut | 32-64 px | 139 | 139 | 0 | 0 | 0 |
+| boyut | 64-96 px | 171 | 171 | 0 | 0 | 0 |
+| boyut | ≥96 px | 406 | 406 | 0 | 0 | 0 |
+
+exp002'nin kaçırdığı 10 cismin hepsini exp004 buldu; exp004'ün bulup exp002'nin kaçırdığı cisim yok. Bu 10 cismin 8'i 16 pikselden küçük.
+
+**Kırılımlar** (üst satır exp002 dürüst, alt satır exp004 sızıntılı)
+
+| Grup | Kare | Parça | Model | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. | Not |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Bizim bölmede eğitimde var | 776 | 17 | dürüst | 0,9942 | 0,7911 | 0,9575 | 0,9871 | 34 | 20 | 14 | 10 | |
+| | | | sızıntılı | 0,9950 | 0,9376 | 0,9987 | 1,0000 | 1 | 1 | 0 | 0 | |
+| Bizim bölmede eğitimde yok (Screw, Tape) | 69 | 2 | dürüst | 0,9950 | 0,7726 | 0,9452 | 1,0000 | 4 | 3 | 1 | 0 | az veri |
+| | | | sızıntılı | 0,9950 | 0,9289 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | az veri |
+| Kuru-aydınlık | 105 | 3 | dürüst | 0,9899 | 0,4087 | 0,9623 | 0,9714 | 4 | 4 | 0 | 3 | |
+| | | | sızıntılı | 0,9950 | 0,8971 | 0,9906 | 1,0000 | 1 | 1 | 0 | 0 | |
+| Kuru-karanlık | 418 | 8 | dürüst | 0,9940 | 0,8163 | 0,9384 | 0,9833 | 27 | 13 | 14 | 7 | |
+| | | | sızıntılı | 0,9950 | 0,9297 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+| Kuru-loş | 121 | 3 | dürüst | 0,9950 | 0,8436 | 0,9528 | 1,0000 | 6 | 6 | 0 | 0 | |
+| | | | sızıntılı | 0,9950 | 0,9609 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+| Islak-loş | 201 | 5 | dürüst | 0,9948 | 0,8924 | 0,9950 | 1,0000 | 1 | 0 | 1 | 0 | |
+| | | | sızıntılı | 0,9950 | 0,9528 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+| <16 px | 39 | 2 | dürüst | 0,8685 | 0,2532 | 0,7750 | 0,7949 | 9 | 6 | 3 | 8 | az veri |
+| | | | sızıntılı | 0,9950 | 0,5688 | 0,9750 | 1,0000 | 1 | 1 | 0 | 0 | az veri |
+| 16-32 px | 90 | 7 | dürüst | 0,9939 | 0,4569 | 0,9888 | 0,9778 | 1 | 1 | 0 | 2 | |
+| | | | sızıntılı | 0,9950 | 0,8016 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+| 32-64 px | 139 | 13 | dürüst | 0,9950 | 0,7815 | 0,9653 | 1,0000 | 5 | 5 | 0 | 0 | |
+| | | | sızıntılı | 0,9950 | 0,9440 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+| 64-96 px | 171 | 14 | dürüst | 0,9950 | 0,7867 | 0,9828 | 1,0000 | 3 | 2 | 1 | 0 | |
+| | | | sızıntılı | 0,9950 | 0,9528 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+| ≥96 px | 406 | 16 | dürüst | 0,9950 | 0,8941 | 0,9531 | 1,0000 | 20 | 9 | 11 | 0 | |
+| | | | sızıntılı | 0,9950 | 0,9771 | 1,0000 | 1,0000 | 0 | 0 | 0 | 0 | |
+
+**Tutarlılık kontrolü: geçti.** exp002'nin ortak karelerdeki hataları (38 yanlış alarm, 10 kaçırma), bütün test'teki hatalarından (175, 73) az.
+
+### 2. Raporlanan puan farkı
+Her model kendi test setinde. İki test seti farklı karelerden oluşuyor; bu farkın tamamı sızıntı değildir.
+
+| Model | Test seti | Eşik | mAP50 | mAP50-95 | P | R | FA | cisimde | zeminde | Kaç. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| exp004 (sızıntılı) | hazır test: 8.429 kare, 8.613 kutu, 116 parça | 0,40 | 0,9948 | 0,9045 | 0,9963 | 0,9898 | 32 | 30 | 2 | 88 |
+| exp002 (dürüst) | bizim test: 3.439 kare, 19 parça | 0,25 | 0,9932 | 0,7811 | 0,9506 | 0,9788 | 175 | 107 | 68 | 73 |
+| **Ağırlıklı ortalama, kaba tahmin**: exp004 | | | 0,9925 | 0,9024 | 0,9964 | 0,9901 | - | - | - | - |
+| **Ağırlıklı ortalama, kaba tahmin**: exp002 | | | 0,9771 | 0,6192 | 0,9468 | 0,9579 | - | - | - | - |
+
+Ağırlıklı ortalamalar iki model için aynı ağırlıklarla (exp002'ninkiler: aydınlık %50,1, ıslak-loş %21,4, loş %15,5, karanlık %13,0) hesaplandı. exp004'ün kendi dosyasındaki ağırlıklar çok az farklı (aydınlık %50,2), çünkü sızıntılı veri klasöründe kullanılmayan 70 görüntü yok; o ağırlıklarla sonuç 0,9925 / 0,9023 / 0,9963 / 0,9901, yani aynı.
+
+Hazır test'te ışık koşulu dağılımı bütün veriye benziyor (aydınlık 4.286 kare, %51). exp004'ün hazır test'teki en zayıf satırları da bizim testtekilerle aynı yerde: kuru-aydınlık (mAP50-95 0,857) ve 16 pikselden küçük kutular (R 0,928, mAP50-95 0,654).
+
+### Sonuçların özeti (yorum kurallarına göre)
+- **Sızıntı puanı şişiriyor.** Aynı 845 karede sızıntılı model dürüst modelden her ölçütte daha iyi: mAP50-95 0,789'dan 0,937'ye (+0,148), yanlış alarm 38'den 1'e, kaçırma 10'dan 0'a. Eşleştirilmiş tabloda tersi yönde tek bir cisim bile yok (835 / 0 / 10 / 0). Yorum kuralına göre bu fark "sızıntının puanı şişirmesi" olarak yorumlanır.
+- **mAP50 neredeyse aynı** (0,994 ve 0,995). Sızıntının asıl etkisi, kutunun yerini tam bulmada (mAP50-95) ve yanlış alarmlarda görülüyor.
+- **Fark en çok zor durumlarda büyük:** kuru-aydınlıkta mAP50-95 0,409'dan 0,897'ye, 16 pikselden küçük kutularda 0,253'ten 0,569'a (az veri). Dürüst testte en zayıf çıkan yerler, sızıntılı modelde neredeyse sorunsuz görünüyor.
+- **Bir makalede raporlanacak puan ile dürüst puan arasındaki fark:** mAP50-95 0,905'e karşı 0,781; ağırlıklı ortalamada 0,902'ye karşı 0,619. Yanlış alarm oranı da çok farklı (hazır test'te 8.613 kutuda 32, bizim test'te 3.439 kutuda 175).
+- **Sonuç ne çıkarsa çıksın nihai model, eşik ve test sonuçları değişmez** (plan gereği). exp004 başka hiçbir amaçla kullanılmayacak.
+
+### Farkı etkileyebilecek başka nedenler
+Sonuçlar görülmeden yazılanlar:
+- exp004'ün eğitim verisi daha az: 22.765 kare, exp002'de 26.906. Bu sızıntılı modelin aleyhinedir, yine de daha iyi çıktı.
+- exp004, bizim test'te "eğitimde yok" sayılan Screw ve Tape'i eğitimde gördü; bu da sızıntının bir parçası.
+- exp002'nin yeniden çalıştırılmasında ilk test'e göre çok küçük sayısal farklar olabilir. Ortak karelerdeki ayrı bir sonuç ilk test'te olmadığı için bu doğrudan karşılaştırılamaz; tutarlılık kontrolü geçti.
+
+Sonuçlar görüldükten sonra fark edilen:
+- exp004 erken durmadı ve 50 epoch eğitildi; exp002'nin en iyi epoch'u 16 idi. Daha uzun eğitim farkın bir kısmını açıklayabilir. Bunu ayırmak için ayrı bir deney gerekir (ör. exp002'yi 50 epoch eğitmek); planlanmadı.
+- İki modelin eşiği farklı (0,25 ve 0,40). Plan gereği her biri kendi val eşiğiyle ölçüldü; P, R ve hata sayıları eşiğe bağlıdır, mAP bağlı değildir.
+
 ## Bölme kuralları (2. sürüm, son)
 Video parçası: görüntüler numara sırasıyla gezilir; sınıf ya da hava/ışık değişince yeni parça başlar. Veri setinde 116 parça var. Bölmeyi `scripts/make_splits.py` üretir (seed 42), kayıt `configs/splits.csv` içindedir.
 
@@ -269,7 +372,7 @@ Revizyon, hiçbir model eğitilmeden ve hiçbir test sonucu görülmeden yapıld
 
      Saat hızı daha yüksek olan işlemci daha yavaş çıktı. Nedeni ölçülmedi; büyük olasılıkla işlemcinin nesli ve desteklediği komutlar ya da oturum türü (GPU'lu / GPU'suz) farkı. Saat hızı tek başına hızı belirlemiyor. Bu yüzden hız sonuçları her zaman işlemci adıyla birlikte verilir; tek bir FPS değeri "Colab hızı" diye raporlanmaz. Bütün satırlar `results/speed_cpu.csv` içindedir.
 5. İki nihai modelin test'te birer kez değerlendirilmesi (bkz. "Test kuralı"). **Bitti** (18 Kasım 2026); bkz. "Test sonuçları".
-6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek. Plan ve yorum kuralları: "Sızıntılı ayrım karşılaştırması" bölümü (defterde `IS = "sizinti"`).
+6. **Hazır (sızıntılı) ayrımla karşılaştırma:** nano ve small bittikten sonra, hazır `trainval.txt` / `test.txt` ayrımıyla da bir eğitim yapılacak. Amaç, sızıntının puanı ne kadar şişirdiğini göstermek. Plan ve yorum kuralları: "Sızıntılı ayrım karşılaştırması" bölümü (defterde `IS = "sizinti"`). **Bitti** (18 Kasım 2026); bkz. "Sızıntılı ayrım sonuçları".
 7. **Telefon kamerasıyla gerçek dünya testi ve demo** (nano ve small eğitimlerinden sonra). Projede özel kamera yok; test ve demo telefon kamerasıyla yapılacak:
    - Boş asfalt fotoğrafları ve asfalt üzerinde cisim fotoğrafları.
    - Maket zemin üzerinde demo videosu.

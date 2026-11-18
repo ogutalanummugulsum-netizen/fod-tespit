@@ -1,0 +1,47 @@
+{
+  "tarih": "2026-11-18 12:35",
+  "git_commit": "edeae19",
+  "ortak_kare": 845,
+  "video_parcasi": 19,
+  "esikler": {
+    "exp002_nano": 0.25,
+    "exp004_nano_sizintili": 0.4
+  },
+  "durust_hatalari_butun_testle_tutarli": true,
+  "tumu": [
+    {
+      "model": "exp002_nano",
+      "rol": "dürüst",
+      "esik": 0.25,
+      "kare": 845,
+      "kutu": 845,
+      "video_parcasi": 19,
+      "mAP50": 0.9943,
+      "mAP50_95": 0.7893,
+      "precision": 0.9565,
+      "recall": 0.9882,
+      "fazladan_kutu": 38,
+      "fazladan_kutu_cisimde": 23,
+      "fazladan_kutu_zeminde": 15,
+      "kacirilan_cisim": 10,
+      "not": ""
+    },
+    {
+      "model": "exp004_nano_sizintili",
+      "rol": "sızıntılı",
+      "esik": 0.4,
+      "kare": 845,
+      "kutu": 845,
+      "video_parcasi": 19,
+      "mAP50": 0.995,
+      "mAP50_95": 0.9371,
+      "precision": 0.9988,
+      "recall": 1.0,
+      "fazladan_kutu": 1,
+      "fazladan_kutu_cisimde": 1,
+      "fazladan_kutu_zeminde": 0,
+      "kacirilan_cisim": 0,
+      "not": ""
+    }
+  ]
+}

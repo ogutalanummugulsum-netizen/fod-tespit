@@ -1,0 +1,25 @@
+model,rol,esik,kirilim,grup,kare,kutu,video_parcasi,mAP50,mAP50_95,precision,recall,fazladan_kutu,fazladan_kutu_cisimde,fazladan_kutu_zeminde,kacirilan_cisim,not
+exp002_nano,dürüst,0.25,tümü,tümü,845,845,19,0.9943,0.7893,0.9565,0.9882,38,23,15,10,
+exp002_nano,dürüst,0.25,sınıf grubu,eğitimde var,776,776,17,0.9942,0.7911,0.9575,0.9871,34,20,14,10,
+exp002_nano,dürüst,0.25,sınıf grubu,eğitimde yok,69,69,2,0.995,0.7726,0.9452,1.0,4,3,1,0,az veri
+exp002_nano,dürüst,0.25,ışık koşulu,Dry-Bright,105,105,3,0.9899,0.4087,0.9623,0.9714,4,4,0,3,
+exp002_nano,dürüst,0.25,ışık koşulu,Dry-Dark,418,418,8,0.994,0.8163,0.9384,0.9833,27,13,14,7,
+exp002_nano,dürüst,0.25,ışık koşulu,Dry-Dim,121,121,3,0.995,0.8436,0.9528,1.0,6,6,0,0,
+exp002_nano,dürüst,0.25,ışık koşulu,Wet-Dim,201,201,5,0.9948,0.8924,0.995,1.0,1,0,1,0,
+exp002_nano,dürüst,0.25,kutu boyutu,<16 px,39,39,2,0.8685,0.2532,0.775,0.7949,9,6,3,8,az veri
+exp002_nano,dürüst,0.25,kutu boyutu,16-32 px,90,90,7,0.9939,0.4569,0.9888,0.9778,1,1,0,2,
+exp002_nano,dürüst,0.25,kutu boyutu,32-64 px,139,139,13,0.995,0.7815,0.9653,1.0,5,5,0,0,
+exp002_nano,dürüst,0.25,kutu boyutu,64-96 px,171,171,14,0.995,0.7867,0.9828,1.0,3,2,1,0,
+exp002_nano,dürüst,0.25,kutu boyutu,>=96 px,406,406,16,0.995,0.8941,0.9531,1.0,20,9,11,0,
+exp004_nano_sizintili,sızıntılı,0.4,tümü,tümü,845,845,19,0.995,0.9371,0.9988,1.0,1,1,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,sınıf grubu,eğitimde var,776,776,17,0.995,0.9376,0.9987,1.0,1,1,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,sınıf grubu,eğitimde yok,69,69,2,0.995,0.9289,1.0,1.0,0,0,0,0,az veri
+exp004_nano_sizintili,sızıntılı,0.4,ışık koşulu,Dry-Bright,105,105,3,0.995,0.8971,0.9906,1.0,1,1,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,ışık koşulu,Dry-Dark,418,418,8,0.995,0.9297,1.0,1.0,0,0,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,ışık koşulu,Dry-Dim,121,121,3,0.995,0.9609,1.0,1.0,0,0,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,ışık koşulu,Wet-Dim,201,201,5,0.995,0.9528,1.0,1.0,0,0,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,kutu boyutu,<16 px,39,39,2,0.995,0.5688,0.975,1.0,1,1,0,0,az veri
+exp004_nano_sizintili,sızıntılı,0.4,kutu boyutu,16-32 px,90,90,7,0.995,0.8016,1.0,1.0,0,0,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,kutu boyutu,32-64 px,139,139,13,0.995,0.944,1.0,1.0,0,0,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,kutu boyutu,64-96 px,171,171,14,0.995,0.9528,1.0,1.0,0,0,0,0,
+exp004_nano_sizintili,sızıntılı,0.4,kutu boyutu,>=96 px,406,406,16,0.995,0.9771,1.0,1.0,0,0,0,0,

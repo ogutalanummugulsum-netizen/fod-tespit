@@ -1,0 +1,40 @@
+Hazır (sızıntılı) ayrım, README Deney sırası 6. adım
+Seed: 42, val oranı (trainval içinden, kare bazında rastgele): 0.1
+
+Hazır listelerin sorunları ve nasıl ele alındığı:
+  trainval.txt: 25345 satır, 47 tekrar satırı; birden çok kez yazılan numara: 4 (014567, 015731, 016653, 016763) -> tek kareye indirildi
+  test.txt    : 8448 satır, 19 tekrar satırı; birden çok kez yazılan numara: 4 (014567, 015731, 016653, 016763) -> tek kareye indirildi
+  iki listede birden olan görüntü: 4 (014567, 015731, 016653, 016763) -> trainval'den çıkarıldı, yalnızca test'te
+  hiçbir listede olmayan görüntü : 70 -> kullanılmadı (bizim bölmede: train 70)
+
+Kare sayıları:
+  train   22765
+  val      2529
+  test     8429
+
+Hazır ayrım x bizim bölme (kare):
+  bizim_bolum  train   val  test
+  split                         
+  train        18058  2359  2348
+  val           2031   252   246
+  test          6747   837   845
+
+Sızıntı (eğitim = hazır train):
+hazır test: 8429 kare, 116 video parçası
+  video parçası eğitimde de olan kare : 8429 (%100.0)
+  bir komşu karesi eğitimde olan kare : 7559 (%89.7)
+  video parçası eğitimde HİÇ olmayan  : 0 kare
+hazır val: 2529 kare, 116 video parçası
+  video parçası eğitimde de olan kare : 2529 (%100.0)
+  bir komşu karesi eğitimde olan kare : 2268 (%89.7)
+  video parçası eğitimde HİÇ olmayan  : 0 kare
+
+Ortak kareler (hazır test VE bizim test):
+ortak: 845 kare, 19 video parçası
+  video parçası eğitimde de olan kare : 845 (%100.0)
+  bir komşu karesi eğitimde olan kare : 755 (%89.3)
+  video parçası eğitimde HİÇ olmayan  : 0 kare
+  ışık koşulu: Dry-Dark 418, Wet-Dim 201, Dry-Dim 121, Dry-Bright 105
+
+exp002_nano bu ortak karelerin video parçalarını hiç görmedi (parçalar bizim test'te).
+exp004_nano_sizintili ise aynı parçaların başka karelerini eğitimde görüyor.

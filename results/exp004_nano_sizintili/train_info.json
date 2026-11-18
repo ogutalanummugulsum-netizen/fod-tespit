@@ -1,0 +1,17 @@
+{
+  "name": "exp004_nano_sizintili",
+  "model": "yolo11n.pt",
+  "epochs": 50,
+  "imgsz": 320,
+  "batch": 64,
+  "seed": 0,
+  "patience": 10,
+  "resumed": false,
+  "run_dir": "/content/drive/MyDrive/fod_proje/runs/exp004_nano_sizintili",
+  "best_weights": "/content/drive/MyDrive/fod_proje/runs/exp004_nano_sizintili/weights/best.pt",
+  "date": "2026-11-18 12:28",
+  "git_commit": "edeae19",
+  "ultralytics": "8.4.172",
+  "torch": "2.14.1+cu130",
+  "device": "Tesla T4"
+}

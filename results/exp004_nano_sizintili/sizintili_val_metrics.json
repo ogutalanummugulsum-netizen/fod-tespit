@@ -1,0 +1,28 @@
+{
+  "exp_id": "exp004_nano_sizintili",
+  "split": "sizintili_val",
+  "data_dir": "yolo_sizintili",
+  "weights": "/content/drive/MyDrive/fod_proje/runs/exp004_nano_sizintili/weights/best.pt",
+  "imgsz": 320,
+  "conf_threshold": 0.4,
+  "esik_kurali": "F2",
+  "date": "2026-11-18 12:30",
+  "git_commit": "edeae19",
+  "epochs_max": 50,
+  "epochs_run": 50,
+  "best_epoch": 50,
+  "light_weights": {
+    "Dry-Bright": 0.502387094861074,
+    "Wet-Dim": 0.21397859027963112,
+    "Dry-Dim": 0.1535450582688373,
+    "Dry-Dark": 0.13008925659045756
+  },
+  "mAP50": 0.9948,
+  "mAP50_95": 0.9009,
+  "precision": 0.9965,
+  "recall": 0.9899,
+  "fazladan_kutu": 9,
+  "fazladan_kutu_cisimde": 7,
+  "fazladan_kutu_zeminde": 2,
+  "kacirilan_cisim": 26
+}
