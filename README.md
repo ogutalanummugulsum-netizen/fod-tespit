@@ -185,9 +185,14 @@ Ağırlıklar: aydınlık %50,1, ıslak-loş %21,4, loş %15,5, karanlık %13,0.
 Amaç: veri setinin hazır `trainval.txt` / `test.txt` ayrımıyla eğitilen bir modelin puanının ne kadar şişkin çıktığını göstermek. Bu bölüm, `exp004_nano_sizintili` eğitilmeden ve hiçbir sonucu görülmeden yazıldı.
 
 **Nasıl yapılır**
-- Hazır ayrım: trainval 25.345, test 8.448 kare. Trainval'den rastgele %10 kare (seed 42, kare bazında) val olarak ayrılır. Bu val de bilerek sızıntılıdır; amaç yaygın "rastgele kare bölme" yöntemini taklit etmek. Hazır test, model seçiminde ve eşik belirlemede kullanılmaz.
+- Hazır ayrım: listelerde trainval 25.345, test 8.448 satır; aşağıdaki düzeltmelerden sonra trainval 25.294, test 8.429 kare. Trainval'den rastgele %10 kare (seed 42, kare bazında) val olarak ayrılır. Bu val de bilerek sızıntılıdır; amaç yaygın "rastgele kare bölme" yöntemini taklit etmek. Hazır test, model seçiminde ve eşik belirlemede kullanılmaz.
 - Model: yalnızca nano, `exp004_nano_sizintili`. Ayarlar exp002 ile aynı: yolo11n, en fazla 50 epoch, patience 10, görüntü boyutu 320, batch 64, seed 0. Güven eşiği sızıntılı val'de F2 kuralıyla seçilir.
 - Ayrı veri klasörü (`data/yolo_sizintili`, `scripts/make_leaky_split.py`). Bizim bölmemize (`data/yolo`, `configs/splits.csv`) dokunulmaz. Sızıntı raporu: `results/leaky_split_report.txt`.
+- **Hazır listelerin sorunları ve nasıl ele alındığı** (18 Kasım 2026, hiçbir model eğitilmeden ve sonuç görülmeden eklendi; ilk çalıştırmada script bu sorunlar yüzünden durdu):
+  - Bazı numaralar bir listede birden çok kez yazılmış: trainval'de 4 numara (47 fazla satır), test'te 4 numara (19 fazla satır). **Tek kareye indirilir.**
+  - 4 görüntü iki listede birden var (014567, 015731, 016653, 016763; tekrar eden numaraların aynısı). **Trainval'den çıkarılır, yalnızca test'te kalır.**
+  - 70 görüntü hiçbir listede yok. **Kullanılmaz.**
+  - Her birinin sayısı `results/leaky_split_report.txt` içine yazılır. Bu 4 + 70 görüntünün hepsi bizim bölmede train'de; bu yüzden ortak kare sayısı (845) değişmez.
 - exp004, hazır test'te bir kez değerlendirilir (`test_log_sizintili.csv`). Sonuçlar `sizintili_val_*` ve `sizintili_test_*` adlı dosyalara yazılır, bizim test sonuçlarıyla karışmaz.
 
 **İki ölçüm**
@@ -195,7 +200,7 @@ Amaç: veri setinin hazır `trainval.txt` / `test.txt` ayrımıyla eğitilen bir
    - exp002_nano bu karelerin video parçalarını hiç görmedi (dürüst).
    - exp004 aynı parçaların komşu karelerini eğitimde gördü (sızıntılı).
    - İki model aynı karelerde, her biri kendi val F2 eşiğiyle ölçülür. Aradaki fark sızıntının doğrudan etkisi olarak raporlanır. Kırılımlar: tümü, sınıf grubu, ışık koşulu, kutu boyutu. Ayrıca aynı cisim için eşleştirilmiş tablo: ikisi de buldu / yalnız exp002 / yalnız exp004 / ikisi de kaçırdı.
-2. **Raporlanan puan farkı.** exp004'ün hazır test'teki (8.448 kare) sonucu ve exp002'nin bizim test'teki (3.439 kare) sonucu yan yana. İki test seti farklı karelerden oluştuğu için bu farkın tamamı sızıntı değildir; "bir makalede raporlanacak puan" ile "dürüst puan" arasındaki fark diye verilir. Işık koşulu ağırlıklı ortalaması iki model için aynı ağırlıklarla verilir.
+2. **Raporlanan puan farkı.** exp004'ün hazır test'teki (8.429 kare) sonucu ve exp002'nin bizim test'teki (3.439 kare) sonucu yan yana. İki test seti farklı karelerden oluştuğu için bu farkın tamamı sızıntı değildir; "bir makalede raporlanacak puan" ile "dürüst puan" arasındaki fark diye verilir. Işık koşulu ağırlıklı ortalaması iki model için aynı ağırlıklarla verilir.
 
 **Test kuralına istisna (yalnızca raporlama)**
 - exp002_nano, bizim test setinde **yalnızca bu 845 ortak karede bir kez daha** çalıştırılır. Nedeni: ilk test'te kare kare tahminler kaydedilmedi.

@@ -5,6 +5,8 @@ Kullanım (önce convert_voc_to_yolo.py ve make_splits.py çalışmış olmalı)
 
 Ne yapar:
     - Veri setinin hazır ayrımını okur: ImageSets/Main/trainval.txt ve test.txt.
+      Listelerin bilinen sorunları: tekrar eden numaralar tek kareye indirilir; iki listede birden olan
+      görüntüler yalnızca test'te bırakılır; hiçbir listede olmayan görüntüler kullanılmaz (sayıları raporda).
     - trainval'den rastgele %10 kareyi (seed 42, kare bazında) val olarak ayırır. Bu da bilerek
       sızıntılıdır: amaç, yaygın "rastgele kare bölme" yönteminin verdiği puanı görmek.
     - data/yolo_sizintili/ altına images/{train,val,test}, labels/{train,val,test}, boxes.csv ve
@@ -26,10 +28,13 @@ SPLITS = ["train", "val", "test"]
 
 
 def read_ids(path):
-    ids = [line.strip() for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(ids) != len(set(ids)):
-        raise SystemExit(f"{path} içinde aynı kare iki kez var.")
-    return ids
+    """Listeyi okur. Hazır listelerde bazı numaralar birden çok kez yazılmış; bunlar tek kareye indirilir.
+
+    Döner: (tekil numaralar, satır sayısı, birden çok kez yazılmış numaralar)
+    """
+    lines = [line.strip() for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    counts = pd.Series(lines).value_counts()
+    return set(lines), len(lines), sorted(counts[counts > 1].index)
 
 
 def segment_table(splits_csv):
@@ -78,15 +83,21 @@ def main():
     if out_dir.resolve() == src_dir.resolve():
         raise SystemExit("DUR: çıktı klasörü bizim veri klasörümüzle aynı olamaz.")
 
-    trainval = read_ids(voc_dir / "ImageSets" / "Main" / "trainval.txt")
-    test = read_ids(voc_dir / "ImageSets" / "Main" / "test.txt")
-    if set(trainval) & set(test):
-        raise SystemExit("DUR: hazır trainval ve test ortak kare içeriyor.")
+    # Hazır listelerin bilinen sorunları (README, "Hazır listelerin sorunları"):
+    #   - bazı numaralar bir listede birden çok kez yazılmış -> tek kareye indirilir
+    #   - bazı görüntüler iki listede birden var -> trainval'den çıkarılır, yalnızca test'te kalır
+    #   - bazı görüntüler hiçbir listede yok -> kullanılmaz
+    trainval, n_trainval_lines, dup_trainval = read_ids(voc_dir / "ImageSets" / "Main" / "trainval.txt")
+    test, n_test_lines, dup_test = read_ids(voc_dir / "ImageSets" / "Main" / "test.txt")
+    in_both = sorted(trainval & test)
+    trainval = trainval - test
 
     boxes = pd.read_csv(src_dir / "boxes.csv", dtype={"image_id": str})
     all_ids = set(boxes["image_id"])
-    if set(trainval) | set(test) != all_ids:
-        raise SystemExit("DUR: hazır ayrım, veri setindeki bütün kareleri tam olarak kapsamıyor.")
+    unknown = (trainval | test) - all_ids
+    if unknown:
+        raise SystemExit(f"DUR: listelerde veri setinde olmayan {len(unknown)} numara var (örnek: {sorted(unknown)[:3]}).")
+    unused = sorted(all_ids - trainval - test)
 
     rng = np.random.default_rng(args.seed)
     trainval_sorted = sorted(trainval)
@@ -99,7 +110,10 @@ def main():
     split_of = {i: "test" for i in test}
     split_of.update({i: ("val" if i in val else "train") for i in trainval})
     table["split"] = table["image_id"].map(split_of)
-    table = table.sort_values("image_id").reset_index(drop=True)
+    unused_table = table[table["split"].isna()]
+    table = table.dropna(subset=["split"]).sort_values("image_id").reset_index(drop=True)
+    if set(table["split"]) != set(SPLITS) or len(unused_table) != len(unused):
+        raise SystemExit("DUR: bölüm ataması beklenmedik bir sonuç verdi.")
 
     # Klasörler
     for split in SPLITS:
@@ -126,6 +140,15 @@ def main():
     lines = [
         "Hazır (sızıntılı) ayrım, README Deney sırası 6. adım",
         f"Seed: {args.seed}, val oranı (trainval içinden, kare bazında rastgele): {args.val_frac}",
+        "",
+        "Hazır listelerin sorunları ve nasıl ele alındığı:",
+        f"  trainval.txt: {n_trainval_lines} satır, {n_trainval_lines - len(trainval | set(in_both))} tekrar satırı;"
+        f" birden çok kez yazılan numara: {len(dup_trainval)} ({', '.join(dup_trainval) or '-'}) -> tek kareye indirildi",
+        f"  test.txt    : {n_test_lines} satır, {n_test_lines - len(test)} tekrar satırı;"
+        f" birden çok kez yazılan numara: {len(dup_test)} ({', '.join(dup_test) or '-'}) -> tek kareye indirildi",
+        f"  iki listede birden olan görüntü: {len(in_both)} ({', '.join(in_both) or '-'}) -> trainval'den çıkarıldı, yalnızca test'te",
+        f"  hiçbir listede olmayan görüntü : {len(unused)} -> kullanılmadı"
+        f" (bizim bölmede: {', '.join(f'{k} {v}' for k, v in unused_table['bizim_bolum'].value_counts().items()) or '-'})",
         "",
         "Kare sayıları:",
     ]
